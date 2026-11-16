@@ -71,6 +71,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
         raise AttributeError(name)
 
     def do_GET(self):
+        # DNS-rebinding defense (Copilot round-3): loopback binding alone
+        # does not stop a hostile page rebindng its hostname to 127.0.0.1.
+        # Reject any Host header that is not a trusted loopback authority.
+        if not self._host_allowed():
+            self._send_json(403, {"error": "forbidden: untrusted Host header"})
+            return
         parsed = urlparse(self.path)
         if parsed.path == "/api/runs":
             self._runs()
@@ -80,6 +86,19 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._findings()
         else:
             self._send_json(404, {"error": f"unknown endpoint: {parsed.path}"})
+
+    def _host_allowed(self):
+        """Allow only loopback Host authorities (localhost / 127.0.0.1 / [::1]),
+        with any port. A missing Host header is refused (HTTP/1.1 requires it)."""
+        host = self.headers.get("Host", "")
+        if not host:
+            return False
+        # strip port: handle host:port, [::1]:port, bare host
+        if host.startswith("["):
+            hostname = host.split("]")[0] + "]"
+        else:
+            hostname = host.rsplit(":", 1)[0] if ":" in host else host
+        return hostname.lower() in ("localhost", "127.0.0.1", "[::1]", "::1")
 
     def _runs(self):
         runs_dir = self.factory_root / "runs"

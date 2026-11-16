@@ -242,5 +242,29 @@ class ServerTests(unittest.TestCase):
             link.unlink()
 
 
+    def test_dns_rebinding_host_refused(self):
+        # Copilot round-3: a hostile Host header (DNS rebinding) must be 403,
+        # while loopback Hosts are allowed. http.client sends Host automatically
+        # from the connect address, so override it explicitly.
+        for evil_host in ("evil.example.com", "attacker.test:8765"):
+            conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+            try:
+                conn.request("GET", "/api/runs", headers={"Host": evil_host})
+                resp = conn.getresponse()
+                self.assertEqual(resp.status, 403, f"Host {evil_host} must be 403")
+                resp.read()
+            finally:
+                conn.close()
+        # loopback Host with a port is allowed
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        try:
+            conn.request("GET", "/api/runs", headers={"Host": f"localhost:{self.port}"})
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, 200)
+            resp.read()
+        finally:
+            conn.close()
+
+
 if __name__ == "__main__":
     unittest.main()
