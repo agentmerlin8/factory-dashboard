@@ -50,6 +50,14 @@ function tokenTotal(tokens: LedgerTokens | null | undefined): number {
   return (tokens?.in ?? 0) + (tokens?.out ?? 0);
 }
 
+// True only when an actual numeric usage value is present — a tokens object
+// with null/undefined in AND out (or {}) records no usage (Copilot DSH-3
+// round-5: missing usage must not display as recorded zero).
+function hasUsage(tokens: LedgerTokens | null | undefined): boolean {
+  return tokens != null
+    && (typeof tokens.in === 'number' || typeof tokens.out === 'number');
+}
+
 function detailNumber(detail: Record<string, unknown> | null | undefined, key: string): number | null {
   const v = detail?.[key];
   return typeof v === 'number' && Number.isFinite(v) ? v : null;
@@ -94,7 +102,7 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
       if (ev === 'dispatch_completed') {
         a.dispatches += 1;
         const total = tokenTotal(row.tokens);
-        if (row.tokens != null) a.tokensRecorded = true;
+        if (hasUsage(row.tokens)) a.tokensRecorded = true;
         if (row.role === 'coder') a.coder += total; else a.noncoder += total;
         // Null-check, not truthy: a recorded ZERO duration/cost is a real
         // measurement and must accumulate (Copilot DSH-2 round-7).
@@ -109,7 +117,7 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
         // Mark recorded from non-null detail.tokens INDEPENDENTLY of the
         // accumulation guard — a zero-token correction is still recorded
         // usage (Copilot DSH-3 round-3).
-        if (corrTokens != null) a.tokensRecorded = true;
+        if (hasUsage(corrTokens)) a.tokensRecorded = true;
         const total = tokenTotal(corrTokens);
         if (total) {
           if (row.role === 'coder') a.coder += total; else a.noncoder += total;

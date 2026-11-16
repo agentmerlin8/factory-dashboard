@@ -108,4 +108,18 @@ describe('HeadlineCards', () => {
     render(<HeadlineCards stories={stories} escapedDefects={0} />);
     expect(cardValue('Total tokens')).toBe('0');
   });
+
+  it('tokens object with null/empty in+out is NOT recorded usage (Copilot round-5)', () => {
+    // {in:null,out:null} and {} record no actual usage -> 'not recorded',
+    // not a misleading '0'.
+    for (const tokens of [{ in: null, out: null }, {}]) {
+      const stories = harvestStories([{ run: 'r', rows: [
+        { event: 'dispatch_completed', story: 'E', role: 'coder', repo: 'x/y' },
+        { event: 'correction', story: 'E', role: 'coder', detail: { tokens } },
+      ] as never }], []);
+      const { unmount } = render(<HeadlineCards stories={stories} escapedDefects={0} />);
+      expect(cardValue('Total tokens')).toBe('not recorded');
+      unmount();
+    }
+  });
 });
