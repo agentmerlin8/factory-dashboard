@@ -1,0 +1,62 @@
+// DSH-2 API client — typed fetch/parse of the three read-only endpoints.
+// Every failure mode (network, HTTP status, malformed JSON, per-source
+// {error} payload, wrong shape) becomes a typed {error} result; these
+// functions never throw and never fabricate rows.
+import type { FindingRow, LedgerRow } from './types';
+
+export type ApiResult<T> = { rows: T } | { error: string };
+
+async function getJson(url: string): Promise<ApiResult<unknown>> {
+  let response: Response;
+  try {
+    response = await fetch(url);
+  } catch (err) {
+    return { error: url + ': ' + (err instanceof Error ? err.message : String(err)) };
+  }
+  if (!response.ok) {
+    return { error: url + ': HTTP ' + response.status };
+  }
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch (err) {
+    return { error: url + ': invalid JSON: ' + (err instanceof Error ? err.message : String(err)) };
+  }
+  // Per-source error payload from the data server: 200 {"error": "<file>: <reason>"}.
+  if (body !== null && typeof body === 'object' && !Array.isArray(body)
+    && typeof (body as { error?: unknown }).error === 'string') {
+    return { error: (body as { error: string }).error };
+  }
+  return { rows: body };
+}
+
+function asArray<T>(result: ApiResult<unknown>, url: string, guard: (v: unknown) => v is T): ApiResult<T[]> {
+  if ('error' in result) return result;
+  const rows = result.rows;
+  if (!Array.isArray(rows) || !rows.every(guard)) {
+    return { error: url + ': unexpected payload shape (expected an array of rows)' };
+  }
+  return { rows: rows as T[] };
+}
+
+const isString = (v: unknown): v is string => typeof v === 'string';
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  v !== null && typeof v === 'object' && !Array.isArray(v);
+const isLedgerRow = (v: unknown): v is LedgerRow => isRecord(v) && typeof v.event === 'string';
+const isFindingRow = (v: unknown): v is FindingRow =>
+  isRecord(v) && typeof v.repo === 'string' && typeof v.pr === 'number' && typeof v.round === 'number';
+
+export async function fetchRuns(): Promise<ApiResult<string[]>> {
+  const url = '/api/runs';
+  return asArray(await getJson(url), url, isString);
+}
+
+export async function fetchLedger(run: string): Promise<ApiResult<LedgerRow[]>> {
+  const url = '/api/ledger?run=' + encodeURIComponent(run);
+  return asArray(await getJson(url), url, isLedgerRow);
+}
+
+export async function fetchFindings(): Promise<ApiResult<FindingRow[]>> {
+  const url = '/api/findings';
+  return asArray(await getJson(url), url, isFindingRow);
+}
