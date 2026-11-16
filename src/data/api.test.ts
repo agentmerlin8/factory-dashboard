@@ -80,6 +80,22 @@ describe('fetchLedger', () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse('just a string')));
     expect(await fetchLedger('demo-run')).toHaveProperty('error');
   });
+
+  it('rejects a row with string tokens (would corrupt aggregates)', async () => {
+    // Copilot DSH-2 round-1: tokens {in:"100"} must be a typed shape error,
+    // not silently concatenated into "010050".
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse([
+      { event: 'dispatch_completed', tokens: { in: '100', out: 50 } },
+    ])));
+    expect(await fetchLedger('demo-run')).toHaveProperty('error');
+  });
+
+  it('rejects a row with a non-numeric wall_s', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse([
+      { event: 'dispatch_completed', wall_s: 'fast' },
+    ])));
+    expect(await fetchLedger('demo-run')).toHaveProperty('error');
+  });
 });
 
 describe('fetchFindings', () => {
@@ -99,5 +115,21 @@ describe('fetchFindings', () => {
   it('empty findings list is valid rows, not an error', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse([])));
     expect(await fetchFindings()).toEqual({ rows: [] });
+  });
+
+  it('rejects a finding with a non-string summary (would crash isEscapedDefect)', async () => {
+    // Copilot DSH-2 round-1: summary:42 must be a typed shape error, not a
+    // TypeError at summary.startsWith downstream.
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse([
+      { repo: 'demo/factory', pr: 1, round: 1, escaped_gate: true, summary: 42 },
+    ])));
+    expect(await fetchFindings()).toHaveProperty('error');
+  });
+
+  it('rejects a finding with a non-boolean escaped_gate', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse([
+      { repo: 'demo/factory', pr: 1, round: 1, escaped_gate: 'yes' },
+    ])));
+    expect(await fetchFindings()).toHaveProperty('error');
   });
 });

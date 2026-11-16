@@ -42,9 +42,25 @@ function asArray<T>(result: ApiResult<unknown>, url: string, guard: (v: unknown)
 const isString = (v: unknown): v is string => typeof v === 'string';
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
-const isLedgerRow = (v: unknown): v is LedgerRow => isRecord(v) && typeof v.event === 'string';
+// Optional-field validators: absent/null is fine; a PRESENT value must have
+// the right type, or malformed source data silently corrupts aggregates
+// (Copilot DSH-2 round-1: tokens {in:"100"} -> string concat; summary:42 ->
+// TypeError in isEscapedDefect).
+const optNumber = (v: unknown): boolean => v === undefined || v === null || typeof v === 'number';
+const optString = (v: unknown): boolean => v === undefined || v === null || typeof v === 'string';
+const optBoolean = (v: unknown): boolean => v === undefined || v === null || typeof v === 'boolean';
+const isTokens = (v: unknown): boolean =>
+  v === undefined || v === null || (isRecord(v) && optNumber(v.in) && optNumber(v.out));
+const isLedgerRow = (v: unknown): v is LedgerRow =>
+  isRecord(v) && typeof v.event === 'string'
+  && isTokens(v.tokens) && optNumber(v.cost_usd) && optNumber(v.wall_s)
+  && optNumber(v.human_min) && optString(v.story) && optString(v.role)
+  && optString(v.repo) && optString(v.model) && optString(v.outcome);
 const isFindingRow = (v: unknown): v is FindingRow =>
-  isRecord(v) && typeof v.repo === 'string' && typeof v.pr === 'number' && typeof v.round === 'number';
+  isRecord(v) && typeof v.repo === 'string' && typeof v.pr === 'number' && typeof v.round === 'number'
+  && optString(v.summary) && optString(v.klass) && optString(v.disposition)
+  && optString(v.source) && optString(v.severity) && optString(v.verified)
+  && optBoolean(v.escaped_gate) && optBoolean(v.escaped_review);
 
 export async function fetchRuns(): Promise<ApiResult<string[]>> {
   const url = '/api/runs';
