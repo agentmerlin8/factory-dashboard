@@ -62,14 +62,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def _refuse_non_get(self):
         self._send_json(405, {"error": "method not allowed: read-only GET API"})
 
-    do_POST = _refuse_non_get
-    do_PUT = _refuse_non_get
-    do_PATCH = _refuse_non_get
-    do_DELETE = _refuse_non_get
-    do_HEAD = _refuse_non_get
-    do_OPTIONS = _refuse_non_get
-    do_TRACE = _refuse_non_get
-    do_CONNECT = _refuse_non_get
+    def __getattr__(self, name):
+        # Catch-all: ANY do_<METHOD> other than do_GET (including PROPFIND,
+        # LOCK, or any exotic method) gets the JSON 405, never the base
+        # class's HTML 501. Copilot round-2 finding.
+        if name.startswith("do_") and name != "do_GET":
+            return self._refuse_non_get
+        raise AttributeError(name)
 
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -103,17 +102,22 @@ class DashboardHandler(BaseHTTPRequestHandler):
         run = run_ids[0]
         # Refuse traversal: ids must be plain directory names (parse_qs has
         # already percent-decoded), and the resolved path must stay inside
-        # runs/ as a second line of defense.
+        # runs/ as a second line of defense. Lookup failures (e.g. overlong
+        # ids raising OSError) return the per-source error, never a crash.
         if not RUN_ID_RE.fullmatch(run) or run in (".", ".."):
             self._send_json(400, {"error": f"invalid run id: {run!r}"})
             return
-        runs_dir = (self.factory_root / "runs").resolve()
-        ledger = (runs_dir / run / "ledger.jsonl").resolve()
-        if not ledger.is_relative_to(runs_dir):
-            self._send_json(400, {"error": f"invalid run id: {run!r}"})
-            return
-        if not ledger.is_file():
-            self._send_json(404, {"error": f"unknown run: {run}"})
+        try:
+            runs_dir = (self.factory_root / "runs").resolve()
+            ledger = (runs_dir / run / "ledger.jsonl").resolve()
+            if not ledger.is_relative_to(runs_dir):
+                self._send_json(400, {"error": f"invalid run id: {run!r}"})
+                return
+            if not ledger.is_file():
+                self._send_json(404, {"error": f"unknown run: {run}"})
+                return
+        except OSError as exc:
+            self._send_json(200, {"error": self._rel_error(f"runs/{run}/ledger.jsonl: {exc}")})
             return
         rows, error = read_jsonl(ledger)
         if error is not None:
@@ -143,9 +147,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
 
 def make_server(factory_root, port=DEFAULT_PORT):
-    """Create a loopback-only server rooted at factory_root (a Path)."""
+    """Create a loopback-only server rooted at factory_root (a Path).
+
+    The root is RESOLVED here so source paths and _rel_error redaction use
+    the same prefix even when FACTORY_ROOT is relative or symlinked
+    (Copilot round-2 finding)."""
     handler = type("BoundHandler", (DashboardHandler,),
-                   {"factory_root": Path(factory_root)})
+                   {"factory_root": Path(factory_root).resolve()})
     return ThreadingHTTPServer(("127.0.0.1", port), handler)
 
 

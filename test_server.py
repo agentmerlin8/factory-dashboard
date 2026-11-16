@@ -189,5 +189,58 @@ class ServerTests(unittest.TestCase):
             backup.rename(findings)
 
 
+    def test_exotic_methods_405(self):
+        # Copilot round-2: PROPFIND/LOCK/etc must also be JSON 405, not 501.
+        for method in ("PROPFIND", "LOCK", "MKCOL"):
+            conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+            try:
+                conn.request(method, "/api/runs")
+                resp = conn.getresponse()
+                self.assertEqual(resp.status, 405, f"{method} must be 405")
+                data = json.loads(resp.read().decode("utf-8"))
+                self.assertIn("error", data)  # JSON, not HTML
+            finally:
+                conn.close()
+
+    def test_overlong_run_id_no_crash(self):
+        # Copilot round-2: path lookup failures must return JSON, not crash.
+        # The exact status depends on the OS (404 unknown-run, 400 invalid,
+        # or 200 per-source error) — the invariant is a JSON error, no crash.
+        status, data = self.request("GET", "/api/ledger?run=" + "a" * 5000)
+        self.assertIn(status, (200, 400, 404))
+        self.assertIsInstance(data, dict)
+        self.assertIn("error", data)
+
+    def test_symlinked_root_no_path_leak(self):
+        # Copilot round-2: relative/symlinked FACTORY_ROOT must not leak
+        # absolute paths in error responses (root resolved at bind time).
+        link = Path(self._tmp.name) / "root-link"
+        link.symlink_to(self.root)
+        httpd = server.make_server(link, port=0)
+        port = httpd.server_address[1]
+        t = threading.Thread(target=httpd.serve_forever, daemon=True)
+        t.start()
+        findings = self.root / "state" / "findings.jsonl"
+        backup = findings.with_suffix(".jsonl.bak2")
+        findings.rename(backup)
+        backup.chmod(0o000)
+        try:
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            conn.request("GET", "/api/findings")
+            resp = conn.getresponse()
+            data = json.loads(resp.read().decode("utf-8"))
+            conn.close()
+            self.assertIn("error", data)
+            self.assertNotIn(str(self.root), data["error"])
+            self.assertNotIn(str(link), data["error"])
+        finally:
+            backup.chmod(0o644)
+            backup.rename(findings)
+            httpd.shutdown()
+            httpd.server_close()
+            t.join(timeout=5)
+            link.unlink()
+
+
 if __name__ == "__main__":
     unittest.main()
