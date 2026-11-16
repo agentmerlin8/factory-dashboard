@@ -105,9 +105,13 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
         // Corrections re-attribute a dispatch's usage by story/role
         // (usage-path-bug recovery). Tokens live in detail.tokens.
         const d = row.detail ?? {};
-        const total = tokenTotal(d.tokens as LedgerTokens | null | undefined);
+        const corrTokens = d.tokens as LedgerTokens | null | undefined;
+        // Mark recorded from non-null detail.tokens INDEPENDENTLY of the
+        // accumulation guard — a zero-token correction is still recorded
+        // usage (Copilot DSH-3 round-3).
+        if (corrTokens != null) a.tokensRecorded = true;
+        const total = tokenTotal(corrTokens);
         if (total) {
-          a.tokensRecorded = true;
           if (row.role === 'coder') a.coder += total; else a.noncoder += total;
           const c = detailNumber(d, 'cost_usd');
           if (c != null) a.cost = (a.cost ?? 0) + c;

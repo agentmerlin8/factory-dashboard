@@ -96,4 +96,16 @@ describe('HeadlineCards', () => {
     render(<HeadlineCards stories={zero} escapedDefects={0} />);
     expect(cardValue('Total tokens')).toBe('0');
   });
+
+  it('a zero-token CORRECTION marks usage recorded (Copilot round-3)', () => {
+    // Dispatch has missing tokens; a correction supplies detail.tokens
+    // {in:0,out:0}. tokensRecorded must become true -> '0', not 'not recorded'.
+    const stories = harvestStories([{ run: 'r', rows: [
+      { event: 'dispatch_completed', story: 'C', role: 'coder', repo: 'x/y' },
+      { event: 'correction', story: 'C', role: 'coder',
+        detail: { tokens: { in: 0, out: 0 } } },
+    ] as never }], []);
+    render(<HeadlineCards stories={stories} escapedDefects={0} />);
+    expect(cardValue('Total tokens')).toBe('0');
+  });
 });
