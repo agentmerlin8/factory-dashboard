@@ -81,6 +81,19 @@ describe('App composite', () => {
     expect(screen.getByRole('button', { name: 'all' })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('reconciles a stale saved scope to all (Copilot round-4)', async () => {
+    // Saved run no longer exists in discovered runs -> fall back to ALL so
+    // data isn't hidden and a scope button stays active.
+    localStorage.setItem('factory-dash:prefs', JSON.stringify({ run: 'deleted-run' }));
+    vi.stubGlobal('fetch', routeFetch());
+    render(<App />);
+    await loaded();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'all' })).toHaveAttribute('aria-pressed', 'true'));
+    // Data is visible (not hidden by the stale scope).
+    expect(cardValue('Total tokens')).not.toBe('not recorded');
+  });
+
   it('shows a friendly empty state for a scope with no data, not stale numbers', async () => {
     vi.stubGlobal('fetch', routeFetch());
     render(<App />);

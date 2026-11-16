@@ -2,7 +2,7 @@
 // DSH-3 composite — scope selector ABOVE the data views; all views recompute
 // from the selected run subset (AC 3). Prefs persist in 'factory-dash:prefs'
 // (AC 4); empty scope and per-source errors get their own states (AC 5).
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import './index.css';
 import HeadlineCards from './components/HeadlineCards';
 import ScopeSelector from './components/ScopeSelector';
@@ -30,6 +30,15 @@ export default function App() {
       localStorage.setItem(PREFS_KEY, JSON.stringify({ run }));
     } catch { /* prefs are best-effort; the view still works */ }
   };
+
+  // Reconcile a stale saved scope: if the persisted run no longer exists in
+  // the discovered runs, fall back to ALL so data isn't hidden and a scope
+  // button stays active (Copilot DSH-3 round-4).
+  useEffect(() => {
+    if (!loading && scope !== ALL && !runs.includes(scope)) {
+      setScope(ALL);
+    }
+  }, [loading, runs, scope]);
 
   const stories = useMemo(
     // When findings failed (null), pass [] so rounds fall back to the
