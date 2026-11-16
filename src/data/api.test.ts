@@ -104,6 +104,15 @@ describe('fetchLedger', () => {
     ])));
     expect(await fetchLedger('demo-run')).toHaveProperty('error');
   });
+
+  it('rejects non-finite token counts (Infinity from 1e309)', async () => {
+    // Copilot DSH-2 round-4: typeof number accepts Infinity; require finite.
+    // Send raw 1e309 (JSON.stringify(Infinity) would become null, masking it).
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      '[{"event":"dispatch_completed","tokens":{"in":1e309,"out":50}}]',
+      { status: 200, headers: { 'Content-Type': 'application/json' } })));
+    expect(await fetchLedger('demo-run')).toHaveProperty('error');
+  });
 });
 
 describe('fetchFindings', () => {

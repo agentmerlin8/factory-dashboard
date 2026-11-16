@@ -46,7 +46,8 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 // the right type, or malformed source data silently corrupts aggregates
 // (Copilot DSH-2 round-1: tokens {in:"100"} -> string concat; summary:42 ->
 // TypeError in isEscapedDefect).
-const optNumber = (v: unknown): boolean => v === undefined || v === null || typeof v === 'number';
+const optNumber = (v: unknown): boolean =>
+  v === undefined || v === null || (typeof v === 'number' && Number.isFinite(v));
 const optString = (v: unknown): boolean => v === undefined || v === null || typeof v === 'string';
 const optBoolean = (v: unknown): boolean => v === undefined || v === null || typeof v === 'boolean';
 const isTokens = (v: unknown): boolean =>
