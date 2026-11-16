@@ -133,6 +133,12 @@ describe('fmt helper', () => {
     expect(fmt(3)).toBe('3');
     expect(fmt(2.5)).toBe('2.50');
   });
+
+  it('renders non-finite values as "not recorded" (defense-in-depth)', () => {
+    expect(fmt(NaN)).toBe('not recorded');
+    expect(fmt(Infinity)).toBe('not recorded');
+    expect(fmt(-Infinity)).toBe('not recorded');
+  });
 });
 
 describe('scope filtering', () => {

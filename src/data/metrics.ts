@@ -45,7 +45,7 @@ export function escapedDefectsByRepo(findings: FindingRow[]): Record<string, num
 // --- harvest (metrics.py semantics, PRD formula 2) ----------------------------
 
 function tokenTotal(tokens: LedgerTokens | null | undefined): number {
-  return (tokens?.in || 0) + (tokens?.out || 0);
+  return (tokens?.in ?? 0) + (tokens?.out ?? 0);
 }
 
 function detailNumber(detail: Record<string, unknown> | null | undefined, key: string): number | null {
