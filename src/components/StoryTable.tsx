@@ -67,7 +67,7 @@ export default function StoryTable({ stories }: Props) {
   const ariaSort = (key: SortKey): 'ascending' | 'descending' | 'none' =>
     key === sortKey ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none';
   const sortHeader = (key: SortKey, label: string) => (
-    <th scope="col" aria-sort={ariaSort(key)}>
+    <th key={key} scope="col" aria-sort={ariaSort(key)}>
       <button type="button" className="dash-sort" onClick={() => toggleSort(key)}>
         {label}
       </button>
