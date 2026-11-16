@@ -79,6 +79,13 @@ export interface StoryMetrics {
   tokensRecorded: boolean;
   /** PRD formula (5); null when unrecorded. */
   rounds: number | null;
+  /** DSH-4: escaped defects joined on repo+pr (PRD formula 1 per story).
+      Null when the findings source failed OR the story has no recorded PR.
+      Optional so pre-DSH-4 view-model literals stay valid. */
+  escapedDefects?: number | null;
+  /** DSH-4: distinct models recorded on the story's dispatches, in first-
+      seen order. Empty when no dispatch recorded a model. */
+  models?: string[];
 }
 
 /** Run/repo scope; 'all' selects everything. */

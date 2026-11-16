@@ -69,12 +69,13 @@ interface Acc {
   cost: number | null; dispatches: number; inLoopDefects: number;
   tokensRecorded: boolean;
   pr: number | null; prePrRounds: number | null; convergedRounds: number | null;
+  models: string[];
 }
 
 /** Fold dispatch_completed (+ correction re-attribution by story/role),
  * human_merged, defect_found, pr_opened and loop_converged into per-story
  * metrics; rounds then come from findings per PRD formula 5. */
-export function harvestStories(runs: RunLedger[], findings: FindingRow[]): StoryMetrics[] {
+export function harvestStories(runs: RunLedger[], findings: FindingRow[] | null): StoryMetrics[] {
   const accs = new Map<string, Acc>();
   for (const runLedger of runs) {
     const run = runLedger.run;
@@ -93,7 +94,7 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
           story, run, arm, repo: null, coder: 0, noncoder: 0, wall: null,
           human: null, cost: null, dispatches: 0, inLoopDefects: 0,
           tokensRecorded: false,
-          pr: null, prePrRounds: null, convergedRounds: null,
+          pr: null, prePrRounds: null, convergedRounds: null, models: [],
         };
         accs.set(key, a);
       }
@@ -101,6 +102,7 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
       const ev = row.event;
       if (ev === 'dispatch_completed') {
         a.dispatches += 1;
+        if (row.model && !a.models.includes(row.model)) a.models.push(row.model);
         const total = tokenTotal(row.tokens);
         if (hasUsage(row.tokens)) a.tokensRecorded = true;
         if (row.role === 'coder') a.coder += total; else a.noncoder += total;
@@ -150,7 +152,9 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
       wallS: a.wall, humanMin: a.human, costUsd: a.cost,
       dispatches: a.dispatches, inLoopDefects: a.inLoopDefects,
       tokensRecorded: a.tokensRecorded,
-      rounds: storyRounds(a, findings),
+      rounds: storyRounds(a, findings ?? []),
+      escapedDefects: storyEscapedDefects(a, findings),
+      models: a.models,
     });
   }
   return out;
@@ -169,6 +173,17 @@ function storyRounds(a: Acc, findings: FindingRow[]): number | null {
     }
   }
   return a.convergedRounds;
+}
+
+/** DSH-4 (AC 5): per-story escaped defects — findings joined on repo+pr,
+ * same join pattern as storyRounds, filtered by the shared isEscapedDefect
+ * formula. Null when findings failed (source unavailable) or the story has
+ * no recorded repo/pr to join on; a joined PR with zero escapes is a real 0. */
+function storyEscapedDefects(a: Acc, findings: FindingRow[] | null): number | null {
+  if (findings === null || a.pr == null || !a.repo) return null;
+  return findings.filter(
+    (f) => f.repo === a.repo && f.pr === a.pr && isEscapedDefect(f),
+  ).length;
 }
 
 // --- headline aggregates (PRD formulas 3 and 4) -------------------------------

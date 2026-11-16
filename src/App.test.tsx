@@ -1,7 +1,8 @@
 // DSH-3 composite — selector ABOVE cards, options discovered from /api/runs,
 // scope change recomputes cards, prefs persist, empty/error states (AC 3-5).
+// DSH-4 — the per-story table sits below the cards and reacts to scope (AC 4).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import App from './App';
 import { controlRun, factoryRun, findings } from './data/fixtures';
 
@@ -122,5 +123,55 @@ describe('App composite', () => {
     render(<App />);
     expect(screen.getByRole('heading', { name: /factory dashboard/i })).toBeInTheDocument();
     expect(screen.getByText(/loading factory data/i)).toBeInTheDocument();
+  });
+});
+
+describe('App per-story table (DSH-4)', () => {
+  function tableStoryIds(): string[] {
+    const table = screen.getByRole('table');
+    return within(table).getAllByRole('row').slice(1)
+      .map((r) => within(r).getAllByRole('cell')[0].textContent ?? '');
+  }
+
+  it('renders the table below the cards with all stories in scope', async () => {
+    vi.stubGlobal('fetch', routeFetch());
+    render(<App />);
+    await loaded();
+    expect(screen.getByRole('heading', { name: /per-story/i })).toBeInTheDocument();
+    expect(tableStoryIds().sort()).toEqual(['CTL-1', 'STY-A', 'STY-B', 'STY-C']);
+  });
+
+  it('scope change updates table rows to the selected run only', async () => {
+    vi.stubGlobal('fetch', routeFetch());
+    render(<App />);
+    await loaded();
+    fireEvent.click(screen.getByRole('button', { name: 'demo-run' }));
+    expect(tableStoryIds().sort()).toEqual(['STY-A', 'STY-B', 'STY-C']);
+    fireEvent.click(screen.getByRole('button', { name: 'control-run' }));
+    expect(tableStoryIds()).toEqual(['CTL-1']);
+    fireEvent.click(screen.getByRole('button', { name: 'all' }));
+    expect(tableStoryIds().sort()).toEqual(['CTL-1', 'STY-A', 'STY-B', 'STY-C']);
+  });
+
+  it('empty scope shows the empty state, not a blank table', async () => {
+    vi.stubGlobal('fetch', routeFetch());
+    render(<App />);
+    await loaded();
+    fireEvent.click(screen.getByRole('button', { name: 'empty-run' }));
+    expect(screen.getByText(/no story data in this scope/i)).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('findings source failed -> escaped cells not recorded, other columns live', async () => {
+    vi.stubGlobal('fetch', routeFetch({
+      '/api/findings': { error: 'state/findings.jsonl: permission denied' },
+    }));
+    render(<App />);
+    await loaded();
+    const row = screen.getByText('STY-A').closest('tr')!;
+    const cells = within(row).getAllByRole('cell').map((c) => c.textContent);
+    expect(cells[6]).toBe('not recorded'); // escaped unknown, never 0
+    expect(cells[5]).toBe('9');            // rounds fall back to loop_converged
+    expect(cells[2]).toBe('150');          // tokens still render from ledger
   });
 });
