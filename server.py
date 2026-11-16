@@ -28,11 +28,27 @@ DEFAULT_PORT = 8765
 RUN_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
+def _reject_nonfinite(value):
+    """json.loads parse_constant hook: NaN/Infinity/-Infinity are not valid
+    JSON and would re-serialize as bare tokens, breaking response.json()."""
+    raise ValueError(f"non-finite JSON constant: {value}")
+
+
+def _no_overflow_float(s):
+    """parse_float hook: a literal like 1e309 parses to inf; reject it."""
+    f = float(s)
+    if f != f or f in (float("inf"), float("-inf")):
+        raise ValueError(f"non-finite JSON number: {s}")
+    return f
+
+
 def read_jsonl(path):
     """Parse a JSONL file into a list of rows.
 
     Returns (rows, None) on success or (None, "<file>: <reason>") on any
     read/parse failure. All-or-nothing: a corrupt line means no rows.
+    Non-finite numbers (NaN/Infinity/overflow) are rejected so responses
+    are always valid JSON (Copilot round-4 finding).
     """
     try:
         with open(path, "r", encoding="utf-8") as fh:
@@ -40,7 +56,9 @@ def read_jsonl(path):
             for line in fh:
                 line = line.strip()
                 if line:
-                    rows.append(json.loads(line))
+                    rows.append(json.loads(
+                        line, parse_constant=_reject_nonfinite,
+                        parse_float=_no_overflow_float))
         return rows, None
     except (OSError, ValueError, UnicodeDecodeError) as exc:
         return None, f"{path}: {exc}"

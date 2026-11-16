@@ -266,5 +266,21 @@ class ServerTests(unittest.TestCase):
             conn.close()
 
 
+    def test_nonfinite_source_yields_error(self):
+        # Copilot round-4: NaN/Infinity/1e309 in source must produce the
+        # documented per-source error (valid JSON), not bare NaN tokens.
+        run = self.root / "runs" / "run-nonfinite"
+        run.mkdir(parents=True, exist_ok=True)
+        ledger = run / "ledger.jsonl"
+        for bad in ('{"x": NaN}', '{"x": Infinity}', '{"x": 1e309}'):
+            ledger.write_text(bad + "\n", encoding="utf-8")
+            status, data = self.request("GET", "/api/ledger?run=run-nonfinite")
+            self.assertEqual(status, 200)
+            self.assertIsInstance(data, dict)
+            self.assertIn("error", data, f"{bad} must yield per-source error")
+        ledger.unlink()
+        run.rmdir()
+
+
 if __name__ == "__main__":
     unittest.main()
