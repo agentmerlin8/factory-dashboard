@@ -118,6 +118,20 @@ describe('harvest semantics (metrics.py parity)', () => {
     expect(byStory('STY-C').costUsd).toBeNull();
   });
 
+  it('a recorded ZERO wall_s/cost accumulates (not discarded as falsy)', () => {
+    // Copilot DSH-2 round-7: truthy checks dropped real zero measurements.
+    // A SINGLE zero-duration dispatch must yield wallS=0 (recorded), not
+    // null (unrecorded) — that distinguishes the fix from the defect.
+    const rows = [
+      { event: 'dispatch_completed', story: 'Z1', role: 'coder', repo: REPOS.demo,
+        tokens: { in: 10, out: 1 }, wall_s: 0, cost_usd: 0 },
+    ];
+    const stories = harvestStories([{ run: 'demo-run', rows: rows as never }], []);
+    const z = stories.find(s => s.story === 'Z1')!;
+    expect(z.wallS).toBe(0);      // recorded zero, NOT null
+    expect(z.costUsd).toBe(0);    // recorded zero, NOT null
+  });
+
   it('records arm and repo per story', () => {
     expect(byStory('STY-A').arm).toBe('factory');
     expect(byStory('STY-A').run).toBe('demo-run');

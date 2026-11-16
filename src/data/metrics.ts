@@ -93,8 +93,10 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
         a.dispatches += 1;
         const total = tokenTotal(row.tokens);
         if (row.role === 'coder') a.coder += total; else a.noncoder += total;
-        if (row.wall_s) a.wall = (a.wall ?? 0) + row.wall_s;
-        if (row.cost_usd) a.cost = (a.cost ?? 0) + row.cost_usd;
+        // Null-check, not truthy: a recorded ZERO duration/cost is a real
+        // measurement and must accumulate (Copilot DSH-2 round-7).
+        if (row.wall_s != null) a.wall = (a.wall ?? 0) + row.wall_s;
+        if (row.cost_usd != null) a.cost = (a.cost ?? 0) + row.cost_usd;
         if (row.human_min != null) a.human = (a.human ?? 0) + row.human_min;
       } else if (ev === 'correction') {
         // Corrections re-attribute a dispatch's usage by story/role
@@ -104,7 +106,7 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
         if (total) {
           if (row.role === 'coder') a.coder += total; else a.noncoder += total;
           const c = detailNumber(d, 'cost_usd');
-          if (c) a.cost = (a.cost ?? 0) + c;
+          if (c != null) a.cost = (a.cost ?? 0) + c;
         }
       } else if (ev === 'defect_found') {
         a.inLoopDefects += 1;
