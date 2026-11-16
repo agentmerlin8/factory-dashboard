@@ -149,4 +149,13 @@ describe('fetchFindings', () => {
     ])));
     expect(await fetchFindings()).toHaveProperty('error');
   });
+
+  it('rejects a finding with a non-finite round (required field)', async () => {
+    // Copilot DSH-2 round-6: required pr/round must be finite, else an
+    // infinite round is silently discarded instead of a source error.
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      '[{"repo":"demo/factory","pr":1,"round":1e309,"escaped_gate":true}]',
+      { status: 200, headers: { 'Content-Type': 'application/json' } })));
+    expect(await fetchFindings()).toHaveProperty('error');
+  });
 });

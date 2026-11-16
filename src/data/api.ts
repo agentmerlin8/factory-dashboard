@@ -64,7 +64,9 @@ const isLedgerRow = (v: unknown): v is LedgerRow =>
   && optString(v.repo) && optString(v.model) && optString(v.outcome)
   && isDetail(v.detail);
 const isFindingRow = (v: unknown): v is FindingRow =>
-  isRecord(v) && typeof v.repo === 'string' && typeof v.pr === 'number' && typeof v.round === 'number'
+  isRecord(v) && typeof v.repo === 'string'
+  && typeof v.pr === 'number' && Number.isFinite(v.pr)
+  && typeof v.round === 'number' && Number.isFinite(v.round)
   && optString(v.summary) && optString(v.klass) && optString(v.disposition)
   && optString(v.source) && optString(v.severity) && optString(v.verified)
   && optBoolean(v.escaped_gate) && optBoolean(v.escaped_review);
