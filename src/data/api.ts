@@ -52,11 +52,15 @@ const optString = (v: unknown): boolean => v === undefined || v === null || type
 const optBoolean = (v: unknown): boolean => v === undefined || v === null || typeof v === 'boolean';
 const isTokens = (v: unknown): boolean =>
   v === undefined || v === null || (isRecord(v) && optNumber(v.in) && optNumber(v.out));
-// Correction usage lives in detail.tokens / detail.cost_usd — validate those
-// too, or a correction with string tokens corrupts aggregates the same way
-// (Copilot DSH-2 round-3).
+// Correction usage lives in detail.tokens / detail.cost_usd; round metadata
+// lives in detail.pr / detail.rounds / detail.pre_pr_rounds. Validate ALL
+// known numeric detail keys at the boundary so malformed values are a typed
+// source error, not silently dropped downstream (Copilot DSH-2 rounds 3/8 —
+// close the form space, not one field at a time).
+const DETAIL_NUMERIC_KEYS = ['cost_usd', 'pr', 'rounds', 'pre_pr_rounds'] as const;
 const isDetail = (v: unknown): boolean =>
-  v === undefined || v === null || (isRecord(v) && isTokens(v.tokens) && optNumber(v.cost_usd));
+  v === undefined || v === null || (isRecord(v) && isTokens(v.tokens)
+    && DETAIL_NUMERIC_KEYS.every((k) => optNumber(v[k])));
 const isLedgerRow = (v: unknown): v is LedgerRow =>
   isRecord(v) && typeof v.event === 'string'
   && isTokens(v.tokens) && optNumber(v.cost_usd) && optNumber(v.wall_s)

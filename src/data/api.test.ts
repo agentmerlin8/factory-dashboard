@@ -113,6 +113,14 @@ describe('fetchLedger', () => {
       { status: 200, headers: { 'Content-Type': 'application/json' } })));
     expect(await fetchLedger('demo-run')).toHaveProperty('error');
   });
+
+  it('rejects malformed numeric round metadata in detail (form-space closure)', async () => {
+    // Copilot DSH-2 round-8: detail.pr/rounds/pre_pr_rounds validated too.
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse([
+      { event: 'loop_converged', detail: { rounds: 'five' } },
+    ])));
+    expect(await fetchLedger('demo-run')).toHaveProperty('error');
+  });
 });
 
 describe('fetchFindings', () => {
