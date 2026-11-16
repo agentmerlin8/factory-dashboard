@@ -102,4 +102,12 @@ describe('App composite', () => {
     expect(cardValue('Total tokens')).toBe('1565');
     expect(cardValue('Escaped defects')).toBe('not recorded');
   });
+
+  it('shows a heading during loading (screen-reader context, F2)', () => {
+    // A fetch that never resolves keeps the app in the loading branch.
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+    render(<App />);
+    expect(screen.getByRole('heading', { name: /factory dashboard/i })).toBeInTheDocument();
+    expect(screen.getByText(/loading factory data/i)).toBeInTheDocument();
+  });
 });

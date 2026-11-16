@@ -32,6 +32,10 @@ export default function App() {
   };
 
   const stories = useMemo(
+    // When findings failed (null), pass [] so rounds fall back to the
+    // ledger's loop_converged detail.rounds — a valid independent source
+    // (DSH-3 review F3: the fallback is intentional, not silent data loss;
+    // escapedDefects separately returns null to signal findings unavailable).
     () => harvestStories(selectRuns(ledgers, scope), findings ?? []),
     [ledgers, scope, findings],
   );
@@ -59,7 +63,10 @@ export default function App() {
         </div>
       )}
       {loading ? (
-        <div className="dash-card"><p className="dash-empty">Loading factory data…</p></div>
+        <div className="dash-card">
+          <h1 className="dash-title">Factory dashboard</h1>
+          <p className="dash-empty">Loading factory data…</p>
+        </div>
       ) : stories.length === 0 ? (
         <div className="dash-card">
           <h1 className="dash-title">Factory dashboard</h1>
