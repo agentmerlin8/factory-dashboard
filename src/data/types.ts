@@ -67,11 +67,16 @@ export interface StoryMetrics {
   wallS: number | null;
   /** null when no human time recorded — never 0. */
   humanMin: number | null;
-  /** null when no cost recorded (cost_usd null/0) — never 0. */
+  /** Raw accumulated cost_usd; a recorded 0 is preserved here. The DISPLAY
+      layer (costDisplay) treats null OR 0 as 'not recorded' because cost is
+      tokens-only until a price table exists (PRD). */
   costUsd: number | null;
   dispatches: number;
   /** In-loop defect_found events — distinct from escaped defects. */
   inLoopDefects: number;
+  /** True when at least one dispatch/correction recorded token usage.
+      Distinguishes missing usage (-> 'not recorded') from a recorded zero. */
+  tokensRecorded: boolean;
   /** PRD formula (5); null when unrecorded. */
   rounds: number | null;
 }

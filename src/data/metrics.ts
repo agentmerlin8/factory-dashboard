@@ -50,6 +50,14 @@ function tokenTotal(tokens: LedgerTokens | null | undefined): number {
   return (tokens?.in ?? 0) + (tokens?.out ?? 0);
 }
 
+// True only when an actual numeric usage value is present — a tokens object
+// with null/undefined in AND out (or {}) records no usage (Copilot DSH-3
+// round-5: missing usage must not display as recorded zero).
+function hasUsage(tokens: LedgerTokens | null | undefined): boolean {
+  return tokens != null
+    && (typeof tokens.in === 'number' || typeof tokens.out === 'number');
+}
+
 function detailNumber(detail: Record<string, unknown> | null | undefined, key: string): number | null {
   const v = detail?.[key];
   return typeof v === 'number' && Number.isFinite(v) ? v : null;
@@ -59,6 +67,7 @@ interface Acc {
   story: string; run: string; arm: Arm; repo: string | null;
   coder: number; noncoder: number; wall: number | null; human: number | null;
   cost: number | null; dispatches: number; inLoopDefects: number;
+  tokensRecorded: boolean;
   pr: number | null; prePrRounds: number | null; convergedRounds: number | null;
 }
 
@@ -83,6 +92,7 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
         a = {
           story, run, arm, repo: null, coder: 0, noncoder: 0, wall: null,
           human: null, cost: null, dispatches: 0, inLoopDefects: 0,
+          tokensRecorded: false,
           pr: null, prePrRounds: null, convergedRounds: null,
         };
         accs.set(key, a);
@@ -92,6 +102,7 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
       if (ev === 'dispatch_completed') {
         a.dispatches += 1;
         const total = tokenTotal(row.tokens);
+        if (hasUsage(row.tokens)) a.tokensRecorded = true;
         if (row.role === 'coder') a.coder += total; else a.noncoder += total;
         // Null-check, not truthy: a recorded ZERO duration/cost is a real
         // measurement and must accumulate (Copilot DSH-2 round-7).
@@ -102,7 +113,12 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
         // Corrections re-attribute a dispatch's usage by story/role
         // (usage-path-bug recovery). Tokens live in detail.tokens.
         const d = row.detail ?? {};
-        const total = tokenTotal(d.tokens as LedgerTokens | null | undefined);
+        const corrTokens = d.tokens as LedgerTokens | null | undefined;
+        // Mark recorded from non-null detail.tokens INDEPENDENTLY of the
+        // accumulation guard — a zero-token correction is still recorded
+        // usage (Copilot DSH-3 round-3).
+        if (hasUsage(corrTokens)) a.tokensRecorded = true;
+        const total = tokenTotal(corrTokens);
         if (total) {
           if (row.role === 'coder') a.coder += total; else a.noncoder += total;
           const c = detailNumber(d, 'cost_usd');
@@ -133,6 +149,7 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
       overheadRatio: a.coder === 0 ? null : a.noncoder / a.coder,
       wallS: a.wall, humanMin: a.human, costUsd: a.cost,
       dispatches: a.dispatches, inLoopDefects: a.inLoopDefects,
+      tokensRecorded: a.tokensRecorded,
       rounds: storyRounds(a, findings),
     });
   }
