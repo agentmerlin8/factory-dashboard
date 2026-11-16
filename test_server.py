@@ -27,11 +27,11 @@ FINDINGS_ROWS = [
     {"ts": "2026-11-15T11:00:00Z", "repo": "media-ingestion-engine", "pr": 14,
      "round": 1, "source": "gate", "klass": "bug", "severity": "major",
      "summary": "off-by-one in retry loop", "escaped_gate": True,
-     "escaped_review": False, "verified": True, "disposition": "fixed"},
+     "escaped_review": False, "verified": "executed", "disposition": "fixed"},
     {"ts": "2026-11-15T11:01:00Z", "repo": "media-ingestion-engine", "pr": 14,
      "round": 1, "source": "review", "klass": "false-positive", "severity": "nit",
      "summary": "RESOLVED naming nit", "escaped_gate": False,
-     "escaped_review": True, "verified": False, "disposition": "rejected"},
+     "escaped_review": True, "verified": "refuted", "disposition": "rejected"},
 ]
 
 
