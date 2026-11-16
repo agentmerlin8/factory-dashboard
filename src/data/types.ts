@@ -77,6 +77,11 @@ export interface StoryMetrics {
   /** True when at least one dispatch/correction recorded token usage.
       Distinguishes missing usage (-> 'not recorded') from a recorded zero. */
   tokensRecorded: boolean;
+  /** Per-role availability: coder/non-coder buckets tracked separately so a
+      story with recorded reviewer usage but missing coder usage shows the
+      coder column as 'not recorded', not 0 (Copilot DSH-4). */
+  coderTokensRecorded: boolean;
+  noncoderTokensRecorded: boolean;
   /** PRD formula (5); null when unrecorded. */
   rounds: number | null;
   /** DSH-4: escaped defects joined on repo+pr (PRD formula 1 per story).

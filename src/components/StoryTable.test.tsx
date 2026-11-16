@@ -15,7 +15,7 @@ function story(partial: Partial<StoryMetrics>): StoryMetrics {
     story: 'STY-X', run: 'r', arm: 'factory', repo: 'x/y',
     coderTokens: 0, noncoderTokens: 0, overheadRatio: null,
     wallS: null, humanMin: null, costUsd: null,
-    dispatches: 0, inLoopDefects: 0, tokensRecorded: false, rounds: null, ...partial,
+    dispatches: 0, inLoopDefects: 0, tokensRecorded: false, coderTokensRecorded: false, noncoderTokensRecorded: false, rounds: null, ...partial,
   };
 }
 
@@ -99,7 +99,8 @@ describe('StoryTable rows', () => {
     expect(c[7]).toBe('not recorded');   // wall null
     expect(c[8]).toBe('not recorded');   // human null
     const b = rowCells('STY-B');
-    expect(b[2]).toBe('0');              // reviewer-only: recorded coder zero
+    expect(b[2]).toBe('not recorded');   // reviewer-only: coder usage never recorded
+    expect(b[3]).toBe('100');            // reviewer tokens recorded (90+10)
     expect(b[4]).toBe('not recorded');   // overhead null (coder == 0)
     expect(b[6]).toBe('0');              // PR 2 has findings, none escaped
     expect(b[8]).toBe('not recorded');   // human null
@@ -211,5 +212,19 @@ describe('per-story escaped defects (repo+pr join)', () => {
     expect(rowCells('STY-B')[6]).toBe('not recorded');
     // rounds still come from the ledger fallback (STY-A loop_converged 9).
     expect(rowCells('STY-A')[5]).toBe('9');
+  });
+
+  it('per-role token availability: missing coder usage shows not-recorded even when reviewer usage is recorded (Copilot DSH-4)', () => {
+    // Coder dispatch has null tokens; reviewer dispatch has recorded usage.
+    // Coder column must be 'not recorded', non-coder column a real number.
+    const stories = harvestStories([{ run: 'r', rows: [
+      { event: 'dispatch_completed', story: 'PR', role: 'coder', repo: 'x/y' },
+      { event: 'dispatch_completed', story: 'PR', role: 'reviewer', repo: 'x/y',
+        tokens: { in: 500, out: 50 } },
+    ] as never }], []);
+    render(<StoryTable stories={stories} />);
+    const cells = rowCells('PR');
+    expect(cells[2]).toBe('not recorded');  // coder tokens missing
+    expect(cells[3]).toBe('550');           // non-coder recorded
   });
 });

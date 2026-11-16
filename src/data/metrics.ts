@@ -68,6 +68,7 @@ interface Acc {
   coder: number; noncoder: number; wall: number | null; human: number | null;
   cost: number | null; dispatches: number; inLoopDefects: number;
   tokensRecorded: boolean;
+  coderTokensRecorded: boolean; noncoderTokensRecorded: boolean;
   pr: number | null; prePrRounds: number | null; convergedRounds: number | null;
   models: string[];
 }
@@ -94,6 +95,7 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[] | null)
           story, run, arm, repo: null, coder: 0, noncoder: 0, wall: null,
           human: null, cost: null, dispatches: 0, inLoopDefects: 0,
           tokensRecorded: false,
+          coderTokensRecorded: false, noncoderTokensRecorded: false,
           pr: null, prePrRounds: null, convergedRounds: null, models: [],
         };
         accs.set(key, a);
@@ -104,7 +106,11 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[] | null)
         a.dispatches += 1;
         if (row.model && !a.models.includes(row.model)) a.models.push(row.model);
         const total = tokenTotal(row.tokens);
-        if (hasUsage(row.tokens)) a.tokensRecorded = true;
+        if (hasUsage(row.tokens)) {
+          a.tokensRecorded = true;
+          if (row.role === 'coder') a.coderTokensRecorded = true;
+          else a.noncoderTokensRecorded = true;
+        }
         if (row.role === 'coder') a.coder += total; else a.noncoder += total;
         // Null-check, not truthy: a recorded ZERO duration/cost is a real
         // measurement and must accumulate (Copilot DSH-2 round-7).
@@ -119,7 +125,11 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[] | null)
         // Mark recorded from non-null detail.tokens INDEPENDENTLY of the
         // accumulation guard — a zero-token correction is still recorded
         // usage (Copilot DSH-3 round-3).
-        if (hasUsage(corrTokens)) a.tokensRecorded = true;
+        if (hasUsage(corrTokens)) {
+          a.tokensRecorded = true;
+          if (row.role === 'coder') a.coderTokensRecorded = true;
+          else a.noncoderTokensRecorded = true;
+        }
         const total = tokenTotal(corrTokens);
         if (total) {
           if (row.role === 'coder') a.coder += total; else a.noncoder += total;
@@ -152,6 +162,8 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[] | null)
       wallS: a.wall, humanMin: a.human, costUsd: a.cost,
       dispatches: a.dispatches, inLoopDefects: a.inLoopDefects,
       tokensRecorded: a.tokensRecorded,
+      coderTokensRecorded: a.coderTokensRecorded,
+      noncoderTokensRecorded: a.noncoderTokensRecorded,
       rounds: storyRounds(a, findings ?? []),
       escapedDefects: storyEscapedDefects(a, findings),
       models: a.models,

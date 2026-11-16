@@ -75,7 +75,6 @@ export default function StoryTable({ stories }: Props) {
   );
   // Token usage renders 'not recorded' unless usage was actually recorded —
   // a dispatch with null tokens must not display as a recorded zero.
-  const tokens = (s: StoryMetrics, n: number) => (s.tokensRecorded ? fmt(n) : 'not recorded');
 
   return (
     <div className="dash-card">
@@ -98,8 +97,8 @@ export default function StoryTable({ stories }: Props) {
             <tr key={s.run + '::' + s.story}>
               <td>{s.story}</td>
               <td>{s.arm} · {s.run}</td>
-              <td>{tokens(s, s.coderTokens)}</td>
-              <td>{tokens(s, s.noncoderTokens)}</td>
+              <td>{s.coderTokensRecorded ? fmt(s.coderTokens) : 'not recorded'}</td>
+              <td>{s.noncoderTokensRecorded ? fmt(s.noncoderTokens) : 'not recorded'}</td>
               <td>{fmt(s.overheadRatio)}</td>
               <td>{fmt(s.rounds)}</td>
               <td>{fmt(s.escapedDefects ?? null)}</td>
