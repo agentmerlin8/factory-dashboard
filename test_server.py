@@ -146,5 +146,48 @@ class ServerTests(unittest.TestCase):
         self.assertTrue(data["error"].startswith("state/findings.jsonl: "))
 
 
+    def test_trace_and_connect_405(self):
+        # F3 regression: AC says ANY non-GET -> 405 (was 501 for TRACE/CONNECT).
+        for method in ("TRACE", "CONNECT"):
+            conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+            try:
+                conn.request(method, "/api/runs")
+                resp = conn.getresponse()
+                self.assertEqual(resp.status, 405, f"{method} must be 405")
+                resp.read()
+            finally:
+                conn.close()
+
+    def test_runs_excludes_hidden_dirs(self):
+        # F4 regression: /api/runs must apply RUN_ID_RE (no .hidden dirs).
+        hidden = self.root / "runs" / ".hidden"
+        hidden.mkdir(parents=True, exist_ok=True)
+        write_jsonl(hidden / "ledger.jsonl", LEDGER_ROWS)
+        try:
+            status, data = self.request("GET", "/api/runs")
+            self.assertEqual(status, 200)
+            self.assertNotIn(".hidden", data)
+        finally:
+            (hidden / "ledger.jsonl").unlink()
+            hidden.rmdir()
+
+    def test_error_no_absolute_path_leak(self):
+        # F1/F2 regression: error responses must not contain the absolute
+        # FACTORY_ROOT path, including inside OS exception messages.
+        findings = self.root / "state" / "findings.jsonl"
+        backup = findings.with_suffix(".jsonl.bak")
+        findings.rename(backup)
+        backup.chmod(0o000)
+        try:
+            status, data = self.request("GET", "/api/findings")
+            self.assertEqual(status, 200)
+            self.assertIn("error", data)
+            self.assertNotIn(str(self.root), data["error"],
+                             "absolute path leaked in error")
+        finally:
+            backup.chmod(0o644)
+            backup.rename(findings)
+
+
 if __name__ == "__main__":
     unittest.main()

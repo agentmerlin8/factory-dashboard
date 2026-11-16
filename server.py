@@ -68,6 +68,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
     do_DELETE = _refuse_non_get
     do_HEAD = _refuse_non_get
     do_OPTIONS = _refuse_non_get
+    do_TRACE = _refuse_non_get
+    do_CONNECT = _refuse_non_get
 
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -85,10 +87,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
         try:
             ids = sorted(
                 entry.name for entry in runs_dir.iterdir()
-                if entry.is_dir() and (entry / "ledger.jsonl").is_file()
+                if entry.is_dir() and RUN_ID_RE.fullmatch(entry.name)
+                and (entry / "ledger.jsonl").is_file()
             )
         except OSError as exc:
-            self._send_json(200, {"error": f"{runs_dir}: {exc}"})
+            self._send_json(200, {"error": self._rel_error(f"{runs_dir}: {exc}")})
             return
         self._send_json(200, ids)
 
@@ -127,10 +130,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self._send_json(200, rows)
 
     def _rel_error(self, error):
-        """Render '<file>: <reason>' with the file relative to FACTORY_ROOT."""
+        """Render '<file>: <reason>' with ALL absolute FACTORY_ROOT paths
+        stripped — including paths embedded in OS exception messages (F2)."""
         prefix = str(self.factory_root) + os.sep
-        if error.startswith(prefix):
-            return error[len(prefix):]
+        error = error.replace(prefix, "")
+        # OS exceptions quote the path independently: '/abs/path/file'
+        error = error.replace(f"'{prefix}", "'")
         return error
 
     def log_message(self, format, *args):  # keep test/CI output quiet
