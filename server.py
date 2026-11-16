@@ -78,7 +78,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _refuse_non_get(self):
-        self._send_json(405, {"error": "method not allowed: read-only GET API"})
+        self.send_response(405)
+        self.send_header("Allow", "GET")  # RFC 7231: 405 MUST list allowed methods
+        body = json.dumps({"error": "method not allowed: read-only GET API"}).encode("utf-8")
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def __getattr__(self, name):
         # Catch-all: ANY do_<METHOD> other than do_GET (including PROPFIND,
@@ -95,7 +101,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if not self._host_allowed():
             self._send_json(403, {"error": "forbidden: untrusted Host header"})
             return
-        parsed = urlparse(self.path)
+        try:
+            parsed = urlparse(self.path)
+        except ValueError as exc:
+            # Malformed request target (e.g. bad IPv6 authority) -> JSON 400,
+            # never an uncaught exception (Copilot round-5 finding).
+            self._send_json(400, {"error": f"malformed request target: {exc}"})
+            return
         if parsed.path == "/api/runs":
             self._runs()
         elif parsed.path == "/api/ledger":

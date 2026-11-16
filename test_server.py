@@ -282,5 +282,39 @@ class ServerTests(unittest.TestCase):
         run.rmdir()
 
 
+    def test_405_has_allow_header(self):
+        # Copilot round-5: RFC 7231 requires Allow header on 405.
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        try:
+            conn.request("POST", "/api/runs")
+            resp = conn.getresponse()
+            self.assertEqual(resp.status, 405)
+            self.assertEqual(resp.getheader("Allow"), "GET")
+            resp.read()
+        finally:
+            conn.close()
+
+    def test_malformed_request_target_json_400(self):
+        # Copilot round-5: malformed URL authority must yield JSON 400, not
+        # an uncaught ValueError. Send a raw bad request line via socket.
+        import socket
+        s = socket.create_connection(("127.0.0.1", self.port), timeout=5)
+        try:
+            s.sendall(b"GET http://[bad-ipv6/api/runs HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+            chunks = []
+            while True:
+                part = s.recv(65536)
+                if not part:
+                    break
+                chunks.append(part)
+            data = b"".join(chunks).decode("utf-8", "replace")
+            self.assertIn("400", data.split("\r\n", 1)[0])
+            body = data.split("\r\n\r\n", 1)[-1]
+            parsed = json.loads(body)  # must parse as JSON
+            self.assertIn("error", parsed)
+        finally:
+            s.close()
+
+
 if __name__ == "__main__":
     unittest.main()
