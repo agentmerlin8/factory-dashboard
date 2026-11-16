@@ -316,5 +316,27 @@ class ServerTests(unittest.TestCase):
             s.close()
 
 
+    def test_head_405_no_body(self):
+        # Copilot round-6: HEAD responses MUST NOT include a body (RFC 7231).
+        # Raw socket to see exactly what the server writes (http.client
+        # suppresses HEAD bodies client-side, masking the defect).
+        import socket
+        s = socket.create_connection(("127.0.0.1", self.port), timeout=5)
+        try:
+            s.sendall(b"HEAD /api/runs HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+            chunks = []
+            while True:
+                part = s.recv(65536)
+                if not part:
+                    break
+                chunks.append(part)
+            data = b"".join(chunks).decode("utf-8", "replace")
+            head, _, body = data.partition("\r\n\r\n")
+            self.assertIn("405", head.split("\r\n", 1)[0])
+            self.assertEqual(body, "", "HEAD must have no body")
+        finally:
+            s.close()
+
+
 if __name__ == "__main__":
     unittest.main()

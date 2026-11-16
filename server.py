@@ -84,7 +84,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        # HEAD responses MUST NOT include a body (RFC 7231 §4.3.2).
+        if self.command != "HEAD":
+            self.wfile.write(body)
 
     def __getattr__(self, name):
         # Catch-all: ANY do_<METHOD> other than do_GET (including PROPFIND,
