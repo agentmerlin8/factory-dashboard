@@ -10,3 +10,11 @@ export function fmt(value: number | null | undefined): string {
   if (Number.isInteger(value)) return String(value);
   return value.toFixed(2);
 }
+
+// DSH-3 AC 2: cost is tokens-only until a price table exists — a recorded
+// 0 is "unknown", not a free run (wall_s zero, by contrast, IS real).
+export function costDisplay(costUsd: number | null | undefined): string {
+  if (costUsd === null || costUsd === undefined || costUsd === 0) return 'not recorded';
+  if (!Number.isFinite(costUsd)) return 'not recorded';
+  return costUsd.toFixed(2);
+}
