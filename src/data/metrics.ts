@@ -59,6 +59,7 @@ interface Acc {
   story: string; run: string; arm: Arm; repo: string | null;
   coder: number; noncoder: number; wall: number | null; human: number | null;
   cost: number | null; dispatches: number; inLoopDefects: number;
+  tokensRecorded: boolean;
   pr: number | null; prePrRounds: number | null; convergedRounds: number | null;
 }
 
@@ -83,6 +84,7 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
         a = {
           story, run, arm, repo: null, coder: 0, noncoder: 0, wall: null,
           human: null, cost: null, dispatches: 0, inLoopDefects: 0,
+          tokensRecorded: false,
           pr: null, prePrRounds: null, convergedRounds: null,
         };
         accs.set(key, a);
@@ -92,6 +94,7 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
       if (ev === 'dispatch_completed') {
         a.dispatches += 1;
         const total = tokenTotal(row.tokens);
+        if (row.tokens != null) a.tokensRecorded = true;
         if (row.role === 'coder') a.coder += total; else a.noncoder += total;
         // Null-check, not truthy: a recorded ZERO duration/cost is a real
         // measurement and must accumulate (Copilot DSH-2 round-7).
@@ -104,6 +107,7 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
         const d = row.detail ?? {};
         const total = tokenTotal(d.tokens as LedgerTokens | null | undefined);
         if (total) {
+          a.tokensRecorded = true;
           if (row.role === 'coder') a.coder += total; else a.noncoder += total;
           const c = detailNumber(d, 'cost_usd');
           if (c != null) a.cost = (a.cost ?? 0) + c;
@@ -133,6 +137,7 @@ export function harvestStories(runs: RunLedger[], findings: FindingRow[]): Story
       overheadRatio: a.coder === 0 ? null : a.noncoder / a.coder,
       wallS: a.wall, humanMin: a.human, costUsd: a.cost,
       dispatches: a.dispatches, inLoopDefects: a.inLoopDefects,
+      tokensRecorded: a.tokensRecorded,
       rounds: storyRounds(a, findings),
     });
   }

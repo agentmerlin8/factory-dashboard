@@ -17,7 +17,7 @@ function story(partial: Partial<StoryMetrics>): StoryMetrics {
     story: 'STY-X', run: 'r', arm: 'factory', repo: 'x/y',
     coderTokens: 0, noncoderTokens: 0, overheadRatio: null,
     wallS: null, humanMin: null, costUsd: null,
-    dispatches: 0, inLoopDefects: 0, rounds: null, ...partial,
+    dispatches: 0, inLoopDefects: 0, tokensRecorded: false, rounds: null, ...partial,
   };
 }
 
@@ -76,5 +76,24 @@ describe('HeadlineCards', () => {
   it('renders total tokens as not recorded when no usage was recorded', () => {
     render(<HeadlineCards stories={[story({})]} escapedDefects={0} />);
     expect(cardValue('Total tokens')).toBe('not recorded');
+  });
+
+  it('distinguishes missing usage from recorded zero via harvest (Copilot F1)', () => {
+    // A dispatch with NULL tokens: dispatches=1 but tokensRecorded=false ->
+    // 'not recorded'. A dispatch with tokens {in:0,out:0}: tokensRecorded=true
+    // -> '0'. The old dispatch-count heuristic showed '0' for both.
+    const missing = harvestStories([{ run: 'r', rows: [
+      { event: 'dispatch_completed', story: 'M', role: 'coder', repo: 'x/y' },
+    ] as never }], []);
+    const { unmount } = render(<HeadlineCards stories={missing} escapedDefects={0} />);
+    expect(cardValue('Total tokens')).toBe('not recorded');
+    unmount();
+
+    const zero = harvestStories([{ run: 'r', rows: [
+      { event: 'dispatch_completed', story: 'Z', role: 'coder', repo: 'x/y',
+        tokens: { in: 0, out: 0 } },
+    ] as never }], []);
+    render(<HeadlineCards stories={zero} escapedDefects={0} />);
+    expect(cardValue('Total tokens')).toBe('0');
   });
 });

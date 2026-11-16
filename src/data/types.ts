@@ -74,6 +74,9 @@ export interface StoryMetrics {
   dispatches: number;
   /** In-loop defect_found events — distinct from escaped defects. */
   inLoopDefects: number;
+  /** True when at least one dispatch/correction recorded token usage.
+      Distinguishes missing usage (-> 'not recorded') from a recorded zero. */
+  tokensRecorded: boolean;
   /** PRD formula (5); null when unrecorded. */
   rounds: number | null;
 }

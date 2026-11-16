@@ -14,8 +14,10 @@ interface Props {
 
 export default function HeadlineCards({ stories, escapedDefects, sub }: Props) {
   const totalTokens = stories.reduce((sum, s) => sum + s.coderTokens + s.noncoderTokens, 0);
-  // Zero tokens is only real when usage was actually recorded.
-  const tokensRecorded = totalTokens > 0 || stories.some((s) => s.dispatches > 0);
+  // Zero tokens is only real when usage was actually recorded — use the
+  // explicit flag, not dispatch count (a dispatch with null tokens still
+  // increments dispatches; Copilot DSH-3 round-1).
+  const tokensRecorded = stories.some((s) => s.tokensRecorded);
   const costs = stories.map((s) => s.costUsd).filter((c): c is number => c != null);
   const totalCost = costs.length > 0 ? costs.reduce((sum, c) => sum + c, 0) : null;
   const cards = [
