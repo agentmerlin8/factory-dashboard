@@ -51,11 +51,17 @@ const optString = (v: unknown): boolean => v === undefined || v === null || type
 const optBoolean = (v: unknown): boolean => v === undefined || v === null || typeof v === 'boolean';
 const isTokens = (v: unknown): boolean =>
   v === undefined || v === null || (isRecord(v) && optNumber(v.in) && optNumber(v.out));
+// Correction usage lives in detail.tokens / detail.cost_usd — validate those
+// too, or a correction with string tokens corrupts aggregates the same way
+// (Copilot DSH-2 round-3).
+const isDetail = (v: unknown): boolean =>
+  v === undefined || v === null || (isRecord(v) && isTokens(v.tokens) && optNumber(v.cost_usd));
 const isLedgerRow = (v: unknown): v is LedgerRow =>
   isRecord(v) && typeof v.event === 'string'
   && isTokens(v.tokens) && optNumber(v.cost_usd) && optNumber(v.wall_s)
   && optNumber(v.human_min) && optString(v.story) && optString(v.role)
-  && optString(v.repo) && optString(v.model) && optString(v.outcome);
+  && optString(v.repo) && optString(v.model) && optString(v.outcome)
+  && isDetail(v.detail);
 const isFindingRow = (v: unknown): v is FindingRow =>
   isRecord(v) && typeof v.repo === 'string' && typeof v.pr === 'number' && typeof v.round === 'number'
   && optString(v.summary) && optString(v.klass) && optString(v.disposition)

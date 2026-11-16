@@ -96,6 +96,14 @@ describe('fetchLedger', () => {
     ])));
     expect(await fetchLedger('demo-run')).toHaveProperty('error');
   });
+
+  it('rejects a correction with string tokens in detail (nested bypass)', async () => {
+    // Copilot DSH-2 round-3: detail.tokens must be validated too.
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse([
+      { event: 'correction', detail: { tokens: { in: '100', out: 50 } } },
+    ])));
+    expect(await fetchLedger('demo-run')).toHaveProperty('error');
+  });
 });
 
 describe('fetchFindings', () => {

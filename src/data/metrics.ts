@@ -35,7 +35,9 @@ export function isEscapedDefect(f: FindingRow): boolean {
 }
 
 export function escapedDefectsByRepo(findings: FindingRow[]): Record<string, number> {
-  const out: Record<string, number> = {};
+  // Null-prototype object: a repo named "constructor"/"toString"/etc. must
+  // not collide with Object.prototype keys (Copilot DSH-2 round-3).
+  const out: Record<string, number> = Object.create(null);
   for (const f of findings) {
     if (isEscapedDefect(f)) out[f.repo] = (out[f.repo] ?? 0) + 1;
   }

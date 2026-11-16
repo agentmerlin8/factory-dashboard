@@ -23,6 +23,17 @@ describe('escaped-defect formula', () => {
     expect(counts[REPOS.control]).toBe(1);
   });
 
+  it('counts a repo named like an Object.prototype key correctly', () => {
+    // Copilot DSH-2 round-3: a repo named "constructor"/"toString" must not
+    // collide with inherited properties (null-prototype record).
+    const f = { repo: 'constructor', pr: 1, round: 1, escaped_gate: true,
+                summary: 'real defect', klass: 'bug', disposition: 'fixed' };
+    const counts = escapedDefectsByRepo([f as never]);
+    expect(counts['constructor']).toBe(1);
+    const f2 = { ...f, repo: 'toString' };
+    expect(escapedDefectsByRepo([f2 as never])['toString']).toBe(1);
+  });
+
   it('predicate requires an escape flag AND passes all three exclusions', () => {
     const base = findings[0]; // escaped_gate+escaped_review true, fixed
     expect(isEscapedDefect(base)).toBe(true);
