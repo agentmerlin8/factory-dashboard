@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import './index.css';
 import HeadlineCards from './components/HeadlineCards';
 import ScopeSelector from './components/ScopeSelector';
+import StoryTable from './components/StoryTable';
 import { useDashboardData } from './hooks/useDashboardData';
 import { ALL, escapedDefectsByRepo, harvestStories, selectRuns } from './data/metrics';
 
@@ -41,11 +42,11 @@ export default function App() {
   }, [loading, runs, scope]);
 
   const stories = useMemo(
-    // When findings failed (null), pass [] so rounds fall back to the
-    // ledger's loop_converged detail.rounds — a valid independent source
-    // (DSH-3 review F3: the fallback is intentional, not silent data loss;
-    // escapedDefects separately returns null to signal findings unavailable).
-    () => harvestStories(selectRuns(ledgers, scope), findings ?? []),
+    // Pass findings through (null when the source failed): rounds fall back
+    // to the ledger's loop_converged detail.rounds inside harvest — a valid
+    // independent source (DSH-3 review F3) — while per-story escaped defects
+    // stay null to signal findings unavailable (DSH-4 AC 5).
+    () => harvestStories(selectRuns(ledgers, scope), findings),
     [ledgers, scope, findings],
   );
   // Escaped defects are per-repo (PRD formula 1); attribute them to the
@@ -82,11 +83,14 @@ export default function App() {
           <p className="dash-empty">No story data in this scope yet.</p>
         </div>
       ) : (
-        <HeadlineCards
-          stories={stories}
-          escapedDefects={escapedDefects}
-          sub={scope === ALL ? 'All runs' : scope}
-        />
+        <>
+          <HeadlineCards
+            stories={stories}
+            escapedDefects={escapedDefects}
+            sub={scope === ALL ? 'All runs' : scope}
+          />
+          <StoryTable stories={stories} />
+        </>
       )}
     </div>
   );

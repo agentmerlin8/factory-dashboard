@@ -17,7 +17,7 @@ function story(partial: Partial<StoryMetrics>): StoryMetrics {
     story: 'STY-X', run: 'r', arm: 'factory', repo: 'x/y',
     coderTokens: 0, noncoderTokens: 0, overheadRatio: null,
     wallS: null, humanMin: null, costUsd: null,
-    dispatches: 0, inLoopDefects: 0, tokensRecorded: false, rounds: null, ...partial,
+    dispatches: 0, inLoopDefects: 0, tokensRecorded: false, coderTokensRecorded: false, noncoderTokensRecorded: false, rounds: null, ...partial,
   };
 }
 
