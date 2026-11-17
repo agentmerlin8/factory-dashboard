@@ -18,10 +18,13 @@ export function compactTokens(n: number): string {
 }
 
 function BarChart({ bars, label, defect }: { bars: TrendBar[]; label: string; defect?: boolean }) {
+  // Accessible description exposes every plotted value (incl. 'not recorded')
+  // to screen readers — role=img otherwise hides the bars (Copilot DSH-5).
+  const desc = bars.map((b) => b.title).join('; ');
   return (
-    <div className="dash-bars" role="img" aria-label={label}>
+    <div className="dash-bars" role="img" aria-label={label} aria-description={desc}>
       {bars.map((b) => (
-        <div key={b.label} className="dash-bar-col">
+        <div key={b.id} className="dash-bar-col" title={b.title}>
           <div
             className={
               'dash-bar'
@@ -29,7 +32,6 @@ function BarChart({ bars, label, defect }: { bars: TrendBar[]; label: string; de
               + (b.value == null ? ' dash-bar--null' : '')
             }
             style={{ height: `${b.pct}%` }}
-            title={b.title}
           />
           <span className="dash-bar-label">{b.label}</span>
         </div>
@@ -39,15 +41,15 @@ function BarChart({ bars, label, defect }: { bars: TrendBar[]; label: string; de
 }
 
 function MixChart({ mix }: { mix: ModelMix[] }) {
+  const desc = mix.map((m) => `${m.model}: ${m.tokens.toLocaleString()} tokens`).join('; ');
   return (
-    <div className="dash-mix" role="img" aria-label="Model mix (tokens)">
+    <div className="dash-mix" role="img" aria-label="Model mix (tokens)" aria-description={desc}>
       {mix.map((m, i) => (
-        <div key={m.model} className="dash-mix-row">
+        <div key={m.model} className="dash-mix-row" title={`${m.model}: ${m.tokens.toLocaleString()} tokens`}>
           <span>{m.model}</span>
           <span
             className={'dash-mix-bar' + (i % 2 === 1 ? ' dash-mix-bar--alt' : '')}
             style={{ width: `${m.pct}%` }}
-            title={`${m.model}: ${m.tokens.toLocaleString()} tokens`}
           />
           <span>{compactTokens(m.tokens)}</span>
         </div>

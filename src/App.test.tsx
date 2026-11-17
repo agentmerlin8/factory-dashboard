@@ -179,7 +179,7 @@ describe('App per-story table (DSH-4)', () => {
 describe('App trends (DSH-5)', () => {
   function barTitles(label: string): string[] {
     const chart = screen.getByRole('img', { name: label });
-    return Array.from(chart.querySelectorAll('.dash-bar')).map((b) => b.getAttribute('title') ?? '');
+    return Array.from(chart.querySelectorAll('.dash-bar-col')).map((b) => b.getAttribute('title') ?? '');
   }
 
   it('renders trends below the table with all three charts', async () => {
@@ -187,7 +187,7 @@ describe('App trends (DSH-5)', () => {
     render(<App />);
     await loaded();
     expect(screen.getByRole('heading', { name: /trends/i })).toBeInTheDocument();
-    expect(barTitles('Review rounds per story')).toEqual(['STY-A: 3 rounds', 'STY-B: 4 rounds', 'STY-C: not recorded']);
+    expect(barTitles('Review rounds per story')).toEqual(['demo-run/STY-A: 3 rounds', 'demo-run/STY-B: 4 rounds', 'demo-run/STY-C: not recorded']);
     expect(barTitles('Escaped defects per story')).toHaveLength(4); // all arms
     const mix = screen.getByRole('img', { name: 'Model mix (tokens)' });
     expect(within(mix).getByText('coder-model')).toBeInTheDocument();
@@ -200,7 +200,7 @@ describe('App trends (DSH-5)', () => {
     await loaded();
     fireEvent.click(screen.getByRole('button', { name: 'control-run' }));
     expect(screen.getByText(/no factory-arm stories/i)).toBeInTheDocument();
-    expect(barTitles('Escaped defects per story')).toEqual(['CTL-1 (ctl): not recorded']);
+    expect(barTitles('Escaped defects per story')).toEqual(['control-run/CTL-1 (ctl): not recorded']);
     const mix = screen.getByRole('img', { name: 'Model mix (tokens)' });
     expect(within(mix).queryByText('review-model')).not.toBeInTheDocument();
     expect(within(mix).getByText('1k')).toBeInTheDocument(); // coder-model 1000 tokens
@@ -225,6 +225,6 @@ describe('App trends (DSH-5)', () => {
     await loaded();
     const titles = barTitles('Escaped defects per story');
     expect(titles.every((t) => t.includes('not recorded'))).toBe(true);
-    expect(barTitles('Review rounds per story')[0]).toBe('STY-A: 9 rounds'); // loop_converged fallback
+    expect(barTitles('Review rounds per story')[0]).toBe('demo-run/STY-A: 9 rounds'); // loop_converged fallback
   });
 });

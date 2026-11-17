@@ -55,9 +55,9 @@ body { background: var(--paper); color: var(--ink); font-family: system-ui, sans
    'not recorded' state — never a fabricated visible count. */
 .dash-bars { display: flex; align-items: flex-end; gap: 14px; height: 140px; padding: 8px 0; }
 .dash-bar-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; flex: 1; }
-.dash-bar { width: 100%; max-width: 48px; background: var(--bar); border-radius: 4px 4px 0 0; min-height: 4px; }
+.dash-bar { width: 100%; max-width: 48px; background: var(--bar); border-radius: 4px 4px 0 0; }
 .dash-bar--defect { background: var(--bar-alt); }
-.dash-bar--null { min-height: 0; background: transparent; }
+.dash-bar--null { background: transparent; }
 .dash-bar-label { color: var(--ink-soft); font-size: 0.75rem; margin-top: 4px; }
 .dash-mix { display: flex; flex-direction: column; gap: 8px; }
 .dash-mix-row { display: grid; grid-template-columns: 160px 1fr 60px; align-items: center; gap: 8px; font-size: 0.82rem; }

@@ -223,6 +223,9 @@ export function barPct(value: number | null, max: number): number {
 }
 
 export interface TrendBar {
+  /** Unique run/story id — React key + tooltip disambiguation (Copilot DSH-5:
+      stories can repeat across runs; label alone is not unique). */
+  id: string;
   label: string;
   value: number | null;
   pct: number;
@@ -235,10 +238,11 @@ export function roundsBars(stories: StoryMetrics[]): TrendBar[] {
   const factory = stories.filter((s) => s.arm === 'factory');
   const max = Math.max(0, ...factory.map((s) => s.rounds ?? 0));
   return factory.map((s) => ({
+    id: `${s.run}/${s.story}`,
     label: s.story,
     value: s.rounds,
     pct: barPct(s.rounds, max),
-    title: s.rounds == null ? `${s.story}: not recorded` : `${s.story}: ${s.rounds} rounds`,
+    title: s.rounds == null ? `${s.run}/${s.story}: not recorded` : `${s.run}/${s.story}: ${s.rounds} rounds`,
   }));
 }
 
@@ -251,12 +255,13 @@ export function escapedBars(stories: StoryMetrics[]): TrendBar[] {
     const armTag = s.arm === 'control' ? 'ctl' : s.arm;
     const label = s.arm === 'control' ? `ctl ${s.story}` : s.story;
     return {
+      id: `${s.run}/${s.story}`,
       label,
       value: escaped,
       pct: barPct(escaped, max),
       title: escaped == null
-        ? `${s.story} (${armTag}): not recorded`
-        : `${s.story} (${armTag}): ${escaped} escaped`,
+        ? `${s.run}/${s.story} (${armTag}): not recorded`
+        : `${s.run}/${s.story} (${armTag}): ${escaped} escaped`,
     };
   });
 }

@@ -50,14 +50,14 @@ describe('roundsBars (pure)', () => {
     expect(byLabel['STY-B'].value).toBe(4);
     expect(byLabel['STY-B'].pct).toBe(100); // max
     expect(byLabel['STY-A'].pct).toBe(75);  // 3/4
-    expect(byLabel['STY-A'].title).toBe('STY-A: 3 rounds');
+    expect(byLabel['STY-A'].title).toBe('demo-run/STY-A: 3 rounds');
   });
   it('null rounds -> 0-height bar + not-recorded title, never 0 rounds', () => {
     const bars = roundsBars(stories);
     const c = bars.find((b) => b.label === 'STY-C')!;
     expect(c.value).toBeNull();
     expect(c.pct).toBe(0);
-    expect(c.title).toBe('STY-C: not recorded');
+    expect(c.title).toBe('demo-run/STY-C: not recorded');
   });
   it('all-null rounds (max=0) -> every bar 0, no NaN', () => {
     const bars = roundsBars([story({ story: 'A', rounds: null }), story({ story: 'B', rounds: null })]);
@@ -73,7 +73,7 @@ describe('escapedBars (pure)', () => {
     const a = bars.find((b) => b.label === 'STY-A')!;
     expect(a.value).toBe(2);
     expect(a.pct).toBe(100); // max 2
-    expect(a.title).toBe('STY-A (factory): 2 escaped');
+    expect(a.title).toBe('demo-run/STY-A (factory): 2 escaped');
     const b = bars.find((b) => b.label === 'STY-B')!;
     expect(b.value).toBe(0); // a joined PR with zero escapes is a real 0
     expect(b.pct).toBe(0);
@@ -168,8 +168,8 @@ describe('Trends component', () => {
     render(<Trends stories={stories} runs={allRuns} />);
     const bars = barsIn('Review rounds per story');
     expect(bars).toHaveLength(3);
-    const a = bars.find((b) => b.getAttribute('title') === 'STY-A: 3 rounds')!;
-    const b = bars.find((b) => b.getAttribute('title') === 'STY-B: 4 rounds')!;
+    const a = bars.find((b) => b.parentElement?.getAttribute('title') === 'demo-run/STY-A: 3 rounds')!;
+    const b = bars.find((b) => b.parentElement?.getAttribute('title') === 'demo-run/STY-B: 4 rounds')!;
     expect(a.style.height).toBe('75%');
     expect(b.style.height).toBe('100%');
     expect(screen.queryByTitle(/CTL-1.*rounds/)).not.toBeInTheDocument();
@@ -179,9 +179,9 @@ describe('Trends component', () => {
     render(<Trends stories={stories} runs={allRuns} />);
     const bars = barsIn('Escaped defects per story');
     expect(bars).toHaveLength(4);
-    const nullBar = bars.find((b) => (b.getAttribute('title') ?? '').includes('STY-C'))!;
+    const nullBar = bars.find((b) => (b.parentElement?.getAttribute('title') ?? '').includes('STY-C'))!;
     expect(nullBar.style.height).toBe('0%');
-    expect(nullBar.getAttribute('title')).toContain('not recorded');
+    expect(nullBar.parentElement?.getAttribute('title')).toContain('not recorded');
     expect(nullBar.className).toContain('dash-bar--null');
     // control label distinguishes the arm
     expect(screen.getByText('ctl CTL-1')).toBeInTheDocument();
@@ -226,5 +226,39 @@ describe('Trends component', () => {
       expect(bar.style.height).toBe('0%');
       expect(bar.style.height).not.toContain('NaN');
     }
+  });
+
+  it('unique run/story keys when a story repeats across runs (Copilot DSH-5)', () => {
+    const dup = [
+      story({ story: 'SAME', run: 'run-a', rounds: 3 }),
+      story({ story: 'SAME', run: 'run-b', rounds: 5 }),
+    ];
+    const bars = roundsBars(dup);
+    expect(bars.map((b) => b.id)).toEqual(['run-a/SAME', 'run-b/SAME']);
+    expect(new Set(bars.map((b) => b.id)).size).toBe(2);
+  });
+
+  it('null-value tooltip is on the column, reachable at zero height (Copilot DSH-5)', () => {
+    render(<Trends stories={[story({ story: 'N', rounds: null })]} runs={[]} />);
+    const bar = barsIn('Review rounds per story')[0];
+    expect(bar.style.height).toBe('0%');
+    // title lives on the column (parent), not the zero-height bar
+    expect(bar.parentElement?.getAttribute('title')).toContain('not recorded');
+  });
+
+  it('charts expose plotted data to screen readers via aria-description (Copilot DSH-5)', () => {
+    render(<Trends stories={stories} runs={allRuns} />);
+    const rounds = screen.getByRole('img', { name: 'Review rounds per story' });
+    expect(rounds.getAttribute('aria-description')).toContain('STY-A: 3 rounds');
+    const mix = screen.getByRole('img', { name: 'Model mix (tokens)' });
+    expect(mix.getAttribute('aria-description')).toContain('coder-model');
+  });
+
+  it('recorded zero renders zero height, no min-height floor (Copilot DSH-5)', () => {
+    // STY-B has a real 0 escaped defects -> bar height 0%, not a 4px stub.
+    render(<Trends stories={stories} runs={allRuns} />);
+    const bars = barsIn('Escaped defects per story');
+    const zeroBar = bars.find((b) => (b.parentElement?.getAttribute('title') ?? '').includes('STY-B'))!;
+    expect(zeroBar.style.height).toBe('0%');
   });
 });
