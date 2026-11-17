@@ -150,6 +150,11 @@ describe('compactTokens (pure formatting)', () => {
   it('non-finite -> not recorded', () => {
     expect(compactTokens(NaN)).toBe('not recorded');
   });
+  it('trims trailing zeros on round values (review nit)', () => {
+    expect(compactTokens(1_000_000)).toBe('1M');
+    expect(compactTokens(1_500_000)).toBe('1.5M');
+    expect(compactTokens(2_000)).toBe('2k');
+  });
 });
 
 // --- AC 1-5: component renders from the pure functions ----------------------

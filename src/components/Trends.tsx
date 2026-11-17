@@ -10,8 +10,10 @@ import type { RunLedger, StoryMetrics } from '../data/types';
  * Pure formatting; non-finite -> 'not recorded' (defense-in-depth). */
 export function compactTokens(n: number): string {
   if (!Number.isFinite(n)) return 'not recorded';
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  // Trim trailing zeros so round values read "1M" / "1.5M", not "1.00M".
+  const trim = (v: number, dp: number) => parseFloat(v.toFixed(dp)).toString();
+  if (n >= 1_000_000) return `${trim(n / 1_000_000, 2)}M`;
+  if (n >= 1_000) return `${trim(n / 1_000, 1)}k`;
   return String(n);
 }
 

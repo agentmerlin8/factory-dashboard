@@ -248,14 +248,15 @@ export function escapedBars(stories: StoryMetrics[]): TrendBar[] {
   const max = Math.max(1, ...stories.map((s) => s.escapedDefects ?? 0));
   return stories.map((s) => {
     const escaped = s.escapedDefects ?? null;
+    const armTag = s.arm === 'control' ? 'ctl' : s.arm;
     const label = s.arm === 'control' ? `ctl ${s.story}` : s.story;
     return {
       label,
       value: escaped,
       pct: barPct(escaped, max),
       title: escaped == null
-        ? `${s.story} (${s.arm}): not recorded`
-        : `${s.story} (${s.arm}): ${escaped} escaped`,
+        ? `${s.story} (${armTag}): not recorded`
+        : `${s.story} (${armTag}): ${escaped} escaped`,
     };
   });
 }
