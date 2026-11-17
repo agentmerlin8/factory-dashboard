@@ -200,10 +200,10 @@ describe('App trends (DSH-5)', () => {
     await loaded();
     fireEvent.click(screen.getByRole('button', { name: 'control-run' }));
     expect(screen.getByText(/no factory-arm stories/i)).toBeInTheDocument();
-    expect(barTitles('Escaped defects per story')).toEqual(['CTL-1 (control): not recorded']);
+    expect(barTitles('Escaped defects per story')).toEqual(['CTL-1 (ctl): not recorded']);
     const mix = screen.getByRole('img', { name: 'Model mix (tokens)' });
     expect(within(mix).queryByText('review-model')).not.toBeInTheDocument();
-    expect(within(mix).getByText('1.0k')).toBeInTheDocument(); // coder-model 1000 tokens
+    expect(within(mix).getByText('1k')).toBeInTheDocument(); // coder-model 1000 tokens
     fireEvent.click(screen.getByRole('button', { name: 'demo-run' }));
     expect(barTitles('Review rounds per story')).toHaveLength(3);
   });
