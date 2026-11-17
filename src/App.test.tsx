@@ -168,10 +168,63 @@ describe('App per-story table (DSH-4)', () => {
     }));
     render(<App />);
     await loaded();
-    const row = screen.getByText('STY-A').closest('tr')!;
+    const row = within(screen.getByRole('table')).getByText('STY-A').closest('tr')!;
     const cells = within(row).getAllByRole('cell').map((c) => c.textContent);
     expect(cells[6]).toBe('not recorded'); // escaped unknown, never 0
     expect(cells[5]).toBe('9');            // rounds fall back to loop_converged
     expect(cells[2]).toBe('150');          // tokens still render from ledger
+  });
+});
+
+describe('App trends (DSH-5)', () => {
+  function barTitles(label: string): string[] {
+    const chart = screen.getByRole('img', { name: label });
+    return Array.from(chart.querySelectorAll('.dash-bar')).map((b) => b.getAttribute('title') ?? '');
+  }
+
+  it('renders trends below the table with all three charts', async () => {
+    vi.stubGlobal('fetch', routeFetch());
+    render(<App />);
+    await loaded();
+    expect(screen.getByRole('heading', { name: /trends/i })).toBeInTheDocument();
+    expect(barTitles('Review rounds per story')).toEqual(['STY-A: 3 rounds', 'STY-B: 4 rounds', 'STY-C: not recorded']);
+    expect(barTitles('Escaped defects per story')).toHaveLength(4); // all arms
+    const mix = screen.getByRole('img', { name: 'Model mix (tokens)' });
+    expect(within(mix).getByText('coder-model')).toBeInTheDocument();
+    expect(within(mix).getByText('review-model')).toBeInTheDocument();
+  });
+
+  it('scope change updates all three charts to the selected run only', async () => {
+    vi.stubGlobal('fetch', routeFetch());
+    render(<App />);
+    await loaded();
+    fireEvent.click(screen.getByRole('button', { name: 'control-run' }));
+    expect(screen.getByText(/no factory-arm stories/i)).toBeInTheDocument();
+    expect(barTitles('Escaped defects per story')).toEqual(['CTL-1 (control): not recorded']);
+    const mix = screen.getByRole('img', { name: 'Model mix (tokens)' });
+    expect(within(mix).queryByText('review-model')).not.toBeInTheDocument();
+    expect(within(mix).getByText('1.0k')).toBeInTheDocument(); // coder-model 1000 tokens
+    fireEvent.click(screen.getByRole('button', { name: 'demo-run' }));
+    expect(barTitles('Review rounds per story')).toHaveLength(3);
+  });
+
+  it('empty scope shows the empty state, not blank charts', async () => {
+    vi.stubGlobal('fetch', routeFetch());
+    render(<App />);
+    await loaded();
+    fireEvent.click(screen.getByRole('button', { name: 'empty-run' }));
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.getByText(/no story data in this scope/i)).toBeInTheDocument();
+  });
+
+  it('findings source failed -> escaped bars not recorded, rounds + mix live', async () => {
+    vi.stubGlobal('fetch', routeFetch({
+      '/api/findings': { error: 'state/findings.jsonl: permission denied' },
+    }));
+    render(<App />);
+    await loaded();
+    const titles = barTitles('Escaped defects per story');
+    expect(titles.every((t) => t.includes('not recorded'))).toBe(true);
+    expect(barTitles('Review rounds per story')[0]).toBe('STY-A: 9 rounds'); // loop_converged fallback
   });
 });
