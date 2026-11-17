@@ -7,6 +7,7 @@ import './index.css';
 import HeadlineCards from './components/HeadlineCards';
 import ScopeSelector from './components/ScopeSelector';
 import StoryTable from './components/StoryTable';
+import Trends from './components/Trends';
 import { useDashboardData } from './hooks/useDashboardData';
 import { ALL, escapedDefectsByRepo, harvestStories, selectRuns } from './data/metrics';
 
@@ -90,6 +91,7 @@ export default function App() {
             sub={scope === ALL ? 'All runs' : scope}
           />
           <StoryTable stories={stories} />
+          <Trends stories={stories} runs={selectRuns(ledgers, scope)} />
         </>
       )}
     </div>

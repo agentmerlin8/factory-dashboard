@@ -213,6 +213,89 @@ export function headlineOverhead(stories: StoryMetrics[]): number | null {
   return coder === 0 ? null : noncoder / coder;
 }
 
+// --- trends aggregation (DSH-5, pure — component renders from these) --------
+
+/** Max-normalized percentage with a max=0/null guard: never NaN or
+ * divide-by-zero. Null values render as 0-height (not-recorded) bars. */
+export function barPct(value: number | null, max: number): number {
+  if (value == null || max <= 0) return 0;
+  return (value / max) * 100;
+}
+
+export interface TrendBar {
+  /** Unique run/story id — React key + tooltip disambiguation (Copilot DSH-5:
+      stories can repeat across runs; label alone is not unique). */
+  id: string;
+  label: string;
+  value: number | null;
+  pct: number;
+  title: string;
+}
+
+/** AC 1: one bar per FACTORY-arm story, height max-normalized over recorded
+ * rounds. Null rounds stay null -> 0-height + 'not recorded' title. */
+export function roundsBars(stories: StoryMetrics[]): TrendBar[] {
+  const factory = stories.filter((s) => s.arm === 'factory');
+  const max = Math.max(0, ...factory.map((s) => s.rounds ?? 0));
+  return factory.map((s) => ({
+    id: `${s.run}/${s.story}`,
+    label: s.story,
+    value: s.rounds,
+    pct: barPct(s.rounds, max),
+    title: s.rounds == null ? `${s.run}/${s.story}: not recorded` : `${s.run}/${s.story}: ${s.rounds} rounds`,
+  }));
+}
+
+/** AC 2: one bar per story (ALL arms), max-normalized with min divisor 1.
+ * Control labels are distinguished; null escaped -> 0-height + title. */
+export function escapedBars(stories: StoryMetrics[]): TrendBar[] {
+  const max = Math.max(1, ...stories.map((s) => s.escapedDefects ?? 0));
+  return stories.map((s) => {
+    const escaped = s.escapedDefects ?? null;
+    const armTag = s.arm === 'control' ? 'ctl' : s.arm;
+    const label = s.arm === 'control' ? `ctl ${s.story}` : s.story;
+    return {
+      id: `${s.run}/${s.story}`,
+      label,
+      value: escaped,
+      pct: barPct(escaped, max),
+      title: escaped == null
+        ? `${s.run}/${s.story} (${armTag}): not recorded`
+        : `${s.run}/${s.story} (${armTag}): ${escaped} escaped`,
+    };
+  });
+}
+
+export interface ModelMix {
+  model: string;
+  tokens: number;
+  pct: number;
+}
+
+/** AC 3: tokens aggregated by model across the scope (coder + non-coder),
+ * from dispatch_completed + correction rows, ONLY rows with recorded usage
+ * and a model name. Sorted desc by tokens; widths max-normalized (the top
+ * model is 100%, so widths stay within [0,100]). A recorded zero is usage
+ * and stays; a no-usage model is excluded, never shown as 0. */
+export function tokensByModel(runs: RunLedger[]): ModelMix[] {
+  const totals = new Map<string, number>();
+  for (const runLedger of runs) {
+    for (const row of runLedger.rows) {
+      if (!row.model) continue;
+      const tokens = row.event === 'dispatch_completed'
+        ? row.tokens
+        : row.event === 'correction'
+          ? (row.detail?.tokens as LedgerTokens | null | undefined)
+          : null;
+      if (!hasUsage(tokens)) continue;
+      totals.set(row.model, (totals.get(row.model) ?? 0) + tokenTotal(tokens));
+    }
+  }
+  const entries = [...totals.entries()].sort((a, b) => b[1] - a[1]);
+  const max = Math.max(0, ...entries.map(([, n]) => n));
+  return entries.map(([model, tokens]) => ({ model, tokens, pct: barPct(tokens, max) }));
+}
+
 /** Mean over FACTORY-arm stories with recorded rounds (control excluded:
  * single-pass, not reviewable). Null when none recorded — never 0. */
 export function meanReviewRounds(stories: StoryMetrics[]): number | null {
