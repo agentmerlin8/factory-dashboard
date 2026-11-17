@@ -53,8 +53,11 @@ body { background: var(--paper); color: var(--ink); font-family: system-ui, sans
    contrast-audited AA against --surface both themes (5.81/4.97 light,
    7.07/8.97 dark). Null bars are transparent: 0-height, title carries the
    'not recorded' state — never a fabricated visible count. */
-.dash-bars { display: flex; align-items: flex-end; gap: 14px; height: 140px; padding: 8px 0; }
-.dash-bar-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; flex: 1; }
+.dash-bars { display: flex; align-items: stretch; gap: 14px; padding: 8px 0; }
+.dash-bar-col { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 0; }
+/* Dedicated equal-height plotting area, separate from the label, so flex
+   shrinking cannot distort percentage bar heights (Copilot DSH-5 round-3). */
+.dash-bar-plot { display: flex; align-items: flex-end; justify-content: center; width: 100%; height: 140px; }
 .dash-bar { width: 100%; max-width: 48px; background: var(--bar); border-radius: 4px 4px 0 0; }
 .dash-bar--defect { background: var(--bar-alt); }
 .dash-bar--null { background: transparent; }

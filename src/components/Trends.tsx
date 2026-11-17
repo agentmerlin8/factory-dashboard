@@ -25,14 +25,16 @@ function BarChart({ bars, label, defect }: { bars: TrendBar[]; label: string; de
     <div className="dash-bars" role="img" aria-label={label} aria-description={desc}>
       {bars.map((b) => (
         <div key={b.id} className="dash-bar-col" title={b.title}>
-          <div
-            className={
-              'dash-bar'
-              + (defect ? ' dash-bar--defect' : '')
-              + (b.value == null ? ' dash-bar--null' : '')
-            }
-            style={{ height: `${b.pct}%` }}
-          />
+          <div className="dash-bar-plot">
+            <div
+              className={
+                'dash-bar'
+                + (defect ? ' dash-bar--defect' : '')
+                + (b.value == null ? ' dash-bar--null' : '')
+              }
+              style={{ height: `${b.pct}%` }}
+            />
+          </div>
           <span className="dash-bar-label">{b.label}</span>
         </div>
       ))}

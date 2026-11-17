@@ -168,8 +168,8 @@ describe('Trends component', () => {
     render(<Trends stories={stories} runs={allRuns} />);
     const bars = barsIn('Review rounds per story');
     expect(bars).toHaveLength(3);
-    const a = bars.find((b) => b.parentElement?.getAttribute('title') === 'demo-run/STY-A: 3 rounds')!;
-    const b = bars.find((b) => b.parentElement?.getAttribute('title') === 'demo-run/STY-B: 4 rounds')!;
+    const a = bars.find((b) => b.closest('.dash-bar-col')?.getAttribute('title') === 'demo-run/STY-A: 3 rounds')!;
+    const b = bars.find((b) => b.closest('.dash-bar-col')?.getAttribute('title') === 'demo-run/STY-B: 4 rounds')!;
     expect(a.style.height).toBe('75%');
     expect(b.style.height).toBe('100%');
     expect(screen.queryByTitle(/CTL-1.*rounds/)).not.toBeInTheDocument();
@@ -179,9 +179,9 @@ describe('Trends component', () => {
     render(<Trends stories={stories} runs={allRuns} />);
     const bars = barsIn('Escaped defects per story');
     expect(bars).toHaveLength(4);
-    const nullBar = bars.find((b) => (b.parentElement?.getAttribute('title') ?? '').includes('STY-C'))!;
+    const nullBar = bars.find((b) => (b.closest('.dash-bar-col')?.getAttribute('title') ?? '').includes('STY-C'))!;
     expect(nullBar.style.height).toBe('0%');
-    expect(nullBar.parentElement?.getAttribute('title')).toContain('not recorded');
+    expect(nullBar.closest('.dash-bar-col')?.getAttribute('title')).toContain('not recorded');
     expect(nullBar.className).toContain('dash-bar--null');
     // control label distinguishes the arm
     expect(screen.getByText('ctl CTL-1')).toBeInTheDocument();
@@ -243,7 +243,7 @@ describe('Trends component', () => {
     const bar = barsIn('Review rounds per story')[0];
     expect(bar.style.height).toBe('0%');
     // title lives on the column (parent), not the zero-height bar
-    expect(bar.parentElement?.getAttribute('title')).toContain('not recorded');
+    expect(bar.closest('.dash-bar-col')?.getAttribute('title')).toContain('not recorded');
   });
 
   it('charts expose plotted data to screen readers via aria-description (Copilot DSH-5)', () => {
@@ -258,7 +258,22 @@ describe('Trends component', () => {
     // STY-B has a real 0 escaped defects -> bar height 0%, not a 4px stub.
     render(<Trends stories={stories} runs={allRuns} />);
     const bars = barsIn('Escaped defects per story');
-    const zeroBar = bars.find((b) => (b.parentElement?.getAttribute('title') ?? '').includes('STY-B'))!;
+    const zeroBar = bars.find((b) => (b.closest('.dash-bar-col')?.getAttribute('title') ?? '').includes('STY-B'))!;
     expect(zeroBar.style.height).toBe('0%');
+  });
+
+  it('bars sit in a dedicated equal-height plot area, separate from labels (Copilot DSH-5 round-3)', () => {
+    render(<Trends stories={stories} runs={allRuns} />);
+    const chart = screen.getByRole('img', { name: 'Review rounds per story' });
+    const plots = chart.querySelectorAll('.dash-bar-plot');
+    const bars = chart.querySelectorAll('.dash-bar');
+    expect(plots.length).toBe(bars.length);
+    // every bar is inside a plot area; labels are siblings of the plot, not in it
+    for (const bar of bars) {
+      expect(bar.parentElement?.className).toContain('dash-bar-plot');
+    }
+    for (const plot of plots) {
+      expect(plot.querySelector('.dash-bar-label')).toBeNull();
+    }
   });
 });
